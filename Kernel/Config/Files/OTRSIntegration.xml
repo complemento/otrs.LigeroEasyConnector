@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<otrs_config version="1.0" init="Application">
+    <ConfigItem Name="GenericInterface::Invoker::Module###OTRS::ArticleSend" Required="0" Valid="1">
+        <Description Translatable="1">Send Article to Other OTRS System.</Description>
+        <Group>OTRSIntegration</Group>
+        <SubGroup>GenericInterface::Invoker::ModuleRegistration</SubGroup>
+        <Setting>
+            <Hash>
+                <Item Key="Name">ArticleSend</Item>
+                <Item Key="Controller">OTRS</Item>
+                <Item Key="ConfigDialog">AdminGenericInterfaceInvokerDefault</Item>
+            </Hash>
+        </Setting>
+    </ConfigItem>
+    <ConfigItem Name="GenericInterface::Mapping::Module###OTRSIntegration" Required="1" Valid="1">
+        <Description Translatable="1">GenericInterface module registration for the mapping layer.</Description>
+        <Group>OTRSIntegration</Group>
+        <SubGroup>GenericInterface::Mapping::ModuleRegistration</SubGroup>
+        <Setting>
+            <Hash>
+                <Item Key="ConfigDialog">AdminGenericInterfaceMappingSimple</Item>
+            </Hash>
+        </Setting>
+    </ConfigItem>
+    <ConfigItem Name="OTRSIntegration::UserLogin" Required="1" Valid="1">
+        <Description Translatable="1">Agent conection user</Description>
+        <Group>OTRSIntegration</Group>
+        <SubGroup>Configuration</SubGroup>
+        <Setting>
+            <String Regex="">agentxyz</String>
+        </Setting>
+    </ConfigItem>
+    <ConfigItem Name="OTRSIntegration::Password" Required="1" Valid="1">
+        <Description Translatable="1">Agent conection Password</Description>
+        <Group>OTRSIntegration</Group>
+        <SubGroup>Configuration</SubGroup>
+        <Setting>
+            <String Regex="">passwordxyz</String>
+        </Setting>
+    </ConfigItem>
+</otrs_config>
