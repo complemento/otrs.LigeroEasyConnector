@@ -5,6 +5,8 @@ use warnings;
 
 use Data::Dumper;
 
+use utf8;
+use Encode qw( encode_utf8 );
 
 use Kernel::System::VariableCheck qw(IsString IsStringWithData);
 
@@ -80,12 +82,16 @@ sub PrepareRequest {
         return $Self->{DebuggerObject}->Error( Summary => 'Got no ArticleID' );
     } 
 
+    # Caso seja necessario filtrar por webservice ID
+    #my %DebuggerInfo = %{$Self->{DebuggerObject}};
+    
     my %ReturnData;
     
     # check Action
     if ( IsStringWithData( $Param{Data}->{Action} ) ) {
         $ReturnData{Action} = $Param{Data}->{Action};
     }
+
 
     # check request for system time
     if ( IsStringWithData( $Param{Data}->{GetSystemTime} ) && $Param{Data}->{GetSystemTime} ) {
@@ -103,17 +109,28 @@ sub PrepareRequest {
             UserID => 1
         );
 
-    $ReturnData{TicketID} = $Article{TicketID};
-    $ReturnData{Article} = \%Article;
+    # Verificar isso é necessário no ambiente de produção - encode_utf8
+    for (keys %Article){
+        $Article{$_} = encode_utf8($Article{$_});
+    }
 
-    
-    ## Jogar no ParamData
+    if(!$Article{DynamicField_CustomerTicketID}){
+        return $Self->{DebuggerObject}->Error( Summary => 'Not a Integration Ticket' );
+    }
+        
+    # Verificar se este ticket é integrado (se ele possui o campo dinamico )
+    $ReturnData{TicketID} = $Article{"DynamicField_CustomerTicketID"};
+    $ReturnData{Article} = \%Article;
     
     ## Pegar anexos
     
     ## para os anexos validos (verificar se devemos retirar os anexos do html do texto do artigo)
         ## montar array de hash com os anexos
 
+    my $EncodeObject = $Kernel::OM->Get("Kernel::System::Encode");
+
+    $EncodeObject->EncodeInput( \%ReturnData );
+    
     return {
         Success => 1,
         Data    => \%ReturnData,
