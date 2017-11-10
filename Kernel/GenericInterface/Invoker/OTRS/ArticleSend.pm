@@ -8,6 +8,8 @@ use Data::Dumper;
 use utf8;
 use Encode qw( encode_utf8 );
 
+use MIME::Base64 qw(encode_base64 decode_base64);
+
 use Kernel::System::VariableCheck qw(IsString IsStringWithData);
 
 # prevent 'Used once' warning for Kernel::OM
@@ -123,6 +125,27 @@ sub PrepareRequest {
     $ReturnData{Article} = \%Article;
     
     ## Pegar anexos
+    my @Ats;
+
+    my %Attachments = $Kernel::OM->Get('Kernel::System::Ticket')->ArticleAttachmentIndex(ArticleID => $Param{Data}->{ArticleID}, UserID => 1);
+    
+    for (keys %Attachments){
+        my %Attachment = $Kernel::OM->Get('Kernel::System::Ticket')->ArticleAttachment(
+            ArticleID => $Param{Data}->{ArticleID},
+            FileID    => $_,   # as returned by ArticleAttachmentIndex
+            UserID    => 1,
+        );
+        my %At;
+        $At{Content} = encode_base64($Attachment{Content});
+        $At{ContentType} = $Attachments{$_}->{ContentType};
+        $At{Filename} = $Attachments{$_}->{Filename};
+        
+        push @Ats, \%At;
+    }
+    
+    $ReturnData{Attachment} = \@Ats;
+    
+    #$Kernel::OM->Get('Kernel::System::Log')->Log( Priority => 'error', Message => "aaaaaaaaaaaa ".Dumper(%Attachments));
     
     ## para os anexos validos (verificar se devemos retirar os anexos do html do texto do artigo)
         ## montar array de hash com os anexos
