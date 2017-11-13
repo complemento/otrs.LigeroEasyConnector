@@ -12,6 +12,18 @@
             </Hash>
         </Setting>
     </ConfigItem>
+    <ConfigItem Name="GenericInterface::Invoker::Module###OTRS::RemoteQueueUpdate" Required="0" Valid="1">
+        <Description Translatable="1">Send Article to Other OTRS System.</Description>
+        <Group>OTRSIntegration</Group>
+        <SubGroup>GenericInterface::Invoker::ModuleRegistration</SubGroup>
+        <Setting>
+            <Hash>
+                <Item Key="Name">RemoteQueueUpdate</Item>
+                <Item Key="Controller">OTRS</Item>
+                <Item Key="ConfigDialog">AdminGenericInterfaceInvokerDefault</Item>
+            </Hash>
+        </Setting>
+    </ConfigItem>
     <ConfigItem Name="GenericInterface::Mapping::Module###OTRSIntegration" Required="1" Valid="1">
         <Description Translatable="1">GenericInterface module registration for the mapping layer.</Description>
         <Group>OTRSIntegration</Group>
