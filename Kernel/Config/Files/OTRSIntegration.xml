@@ -13,12 +13,24 @@
         </Setting>
     </ConfigItem>
     <ConfigItem Name="GenericInterface::Invoker::Module###OTRS::RemoteQueueUpdate" Required="0" Valid="1">
-        <Description Translatable="1">Send Article to Other OTRS System.</Description>
+        <Description Translatable="1">Updates remote queue based on RemoteQueue dynamic field update (you need to create this dynamic field as a dropdown).</Description>
         <Group>OTRSIntegration</Group>
         <SubGroup>GenericInterface::Invoker::ModuleRegistration</SubGroup>
         <Setting>
             <Hash>
                 <Item Key="Name">RemoteQueueUpdate</Item>
+                <Item Key="Controller">OTRS</Item>
+                <Item Key="ConfigDialog">AdminGenericInterfaceInvokerDefault</Item>
+            </Hash>
+        </Setting>
+    </ConfigItem>
+    <ConfigItem Name="GenericInterface::Invoker::Module###OTRS::RemoteTicketUpdate" Required="0" Valid="1">
+        <Description Translatable="1">Update remote ticket based on any event you want. You need to configure all the information on the invoker mapping, such as remote ticket ID and the remote information to be updated.</Description>
+        <Group>OTRSIntegration</Group>
+        <SubGroup>GenericInterface::Invoker::ModuleRegistration</SubGroup>
+        <Setting>
+            <Hash>
+                <Item Key="Name">RemoteTicketUpdate</Item>
                 <Item Key="Controller">OTRS</Item>
                 <Item Key="ConfigDialog">AdminGenericInterfaceInvokerDefault</Item>
             </Hash>

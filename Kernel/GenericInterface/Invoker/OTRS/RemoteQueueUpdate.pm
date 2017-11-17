@@ -123,10 +123,17 @@ sub PrepareRequest {
         return $Self->{DebuggerObject}->Error( Summary => 'Not a Integration Ticket' );
     }
         
+    if(!$Ticket{"DynamicField_RemoteQueue"}){
+        return $Self->{DebuggerObject}->Error( Summary => 'Remote Queue not Defined' );        
+    }
+
     # Verificar se este ticket é integrado (se ele possui o campo dinamico )
     $ReturnData{TicketID} = $Ticket{"DynamicField_CustomerTicketID"};
 
+    # Prepara estrutura para envio da fila remota
+    $ReturnData{Ticket}->{Queue} = $Ticket{"DynamicField_RemoteQueue"};
 
+    # Vamos mandar um texto padrão?
     #$ReturnData{Article} = \%Article;
     
     ### Pegar anexos
@@ -157,6 +164,26 @@ sub PrepareRequest {
 
     my $EncodeObject = $Kernel::OM->Get("Kernel::System::Encode");
 
+    # Vamos limpar o campo dinâmico para fazer com que ele esteja em branco quando a tela de alteração for acionada novamente,
+    # Sem um pré preenchido prévio
+
+    my $DynamicFieldObject        = $Kernel::OM->Get('Kernel::System::DynamicField');
+    my $DynamicFieldBackendObject = $Kernel::OM->Get('Kernel::System::DynamicField::Backend');
+    my $DynamicFieldConfigRQ = $DynamicFieldObject->DynamicFieldGet(
+        Name => 'RemoteQueue',
+    );
+
+    # disable ticket events (Maybe it works on OTRS 5, but does not in OTRS 4)
+    #$Kernel::OM->Get('Kernel::Config')->{'Ticket::EventModulePost'} = {};
+
+    $DynamicFieldBackendObject->ValueSet(
+        DynamicFieldConfig => $DynamicFieldConfigRQ,
+        ObjectID           => $Param{Data}->{TicketID},
+        Value              => '',
+        UserID             => 1,
+    );
+
+    # Prepara envio
     $EncodeObject->EncodeInput( \%ReturnData );
     
     return {

@@ -3,6 +3,9 @@ package Kernel::GenericInterface::Mapping::OTRSIntegration;
 use strict;
 use warnings;
 
+use Data::Dumper;
+
+
 use Kernel::System::VariableCheck qw(IsHashRefWithData IsString IsStringWithData);
 
 
@@ -46,7 +49,7 @@ sub new {
     }
 
     # check mapping config
-    if ( !IsHashRefWithData( $Param{MappingConfig} ) ) {
+    if ( !( $Param{MappingConfig} ) ) {
         return $Self->{DebuggerObject}->Error(
             Summary => 'Got no MappingConfig as hash ref with content!',
         );
@@ -79,19 +82,12 @@ we need the config to be in the following format
 
     $Self->{MappingConfig}->{Config} = {
         KeyMapExact => {           # optional. key/value pairs for direct replacement
-            'old_value'         => 'new_value',
-            'another_old_value' => 'another_new_value',
-            'maps_to_same_value => 'another_new_value',
-        },
-        KeyMapRegEx => {           # optional. replace keys with value if current key matches regex
-            'Stat(e|us)'  => 'state',
-            '[pP]riority' => 'prio',
+            '{Ticket}->{Queue}'         => '{Ticket}->{QueueID}',
         },
         KeyMapDefault => {         # required. replace keys if the have not been replaced before
             MapType => 'Keep',     # possible values are
                                    # 'Keep' (leave unchanged)
                                    # 'Ignore' (drop key/value pair)
-                                   # 'MapTo' (use provided value as default)
             MapTo => 'new_value',  # only used if 'MapType' is 'MapTo'. then required
         },
         ValueMap => {
@@ -163,150 +159,201 @@ sub Map {
 
     # go through keys for replacement
     my %ReturnData;
-    CONFIGKEY:
-    for my $OldKey ( sort keys %{ $Param{Data} } ) {
+    
+    # Só teremos duas opções, ou ignora e só mapeia aquilo que for encontrado, ou copia toda a estrutura e vai renomeando
+    if($Config->{KeyMapDefault}->{MapType} ne 'Ignore'){
+        %ReturnData = %{ $Param{Data} };
+    }
+
+    # Verifica os mapeamentos indicados na configuração
+    for my $Map (keys %{$Config->{KeyMapExact}}){
+        my %Val;
+        my $eval = '$Val{Value} = $Param{Data}->'.$Map;
+        # Armazena o valor original da chave
+        eval $eval;
+
+        if ($Val{Value}) {
+            # @TODO mapeamento dos valores
+            # check if we have a value mapping for the specific key
+            my $ValueMap = $Config->{ValueMap}->{$Map};
+
+            if ($ValueMap) {
+                # first check in exact (1:1) map
+                if ( $ValueMap->{ValueMapExact} && $ValueMap->{ValueMapExact}->{$Val{Value}} ) {
+                    $Val{Value} = $ValueMap->{ValueMapExact}->{$Val{Value}};
+                }
+
+                # if we have no match from exact map, try regex map
+                if ( $ValueMap->{ValueMapRegEx} ) {
+                    VALUEMAPREGEX:
+                    for my $ConfigKey ( sort keys %{ $ValueMap->{ValueMapRegEx} } ) {
+                        next VALUEMAPREGEX if $Val{Value} !~ m{ \A $ConfigKey \z }xms;
+                        # @TODO: Possivel bug por fazer replace direto na varialve
+                        # talvez seja o caso de clonar e preencher com novos valores..
+                        $Val{Value} = $ValueMap->{ValueMapRegEx}->{$ConfigKey};
+                        next CONFIGKEY;
+                    }
+                }
+            }
+            # Renomeia chave (apaga e cria outra na pratica)
+            $eval = 'delete $ReturnData'.$Map;
+            eval $eval;
+            $eval = '$ReturnData'.$Config->{KeyMapExact}->{$Map}.' = $Val{Value}';
+            eval $eval;
+        }
+    }
+    
+    #my %Hash = %{ $Param{Data} };
+    #CONFIGKEY:
+    #for my $OldKey ( sort keys %Hash ) {
    
-        # check if key is valid
-        if ( !IsStringWithData($OldKey) ) {
-            $Self->{DebuggerObject}->Notice( Summary => 'Got an original key that is not valid!' );
-            next CONFIGKEY;
-        }
+        ## Verifica se é hash. Caso positivo, executa neste nível
+        #if(IsHashRefWithData($Param{Data}->{$OldKey})){
+            #$Self->{DebuggerObject}->Notice( Summary => '$OldKey is a hash!' );
+            #next CONFIGKEY;
+        #}
+   
+        ## check if key is valid
+        #if ( !IsStringWithData($OldKey) ) {
+            #$Self->{DebuggerObject}->Notice( Summary => 'Got an original key that is not valid!' );
+            #next CONFIGKEY;
+        #}
 
-        # map key
-        my $NewKey;
+        ## map key
+        #my $NewKey;
 
-        # first check in exact (1:1) map
-        if ( $Config->{KeyMapExact} && $Config->{KeyMapExact}->{$OldKey} ) {
-            $NewKey = $Config->{KeyMapExact}->{$OldKey};
-        }
+        ## first check in exact (1:1) map
+        #if ( $Config->{KeyMapExact} && $Config->{KeyMapExact}->{$OldKey} ) {
+            #$NewKey = $Config->{KeyMapExact}->{$OldKey};
+        #}
 
-        # if we have no match from exact map, try regex map
-        if ( !$NewKey && $Config->{KeyMapRegEx} ) {
-            KEYMAPREGEX:
-            for my $ConfigKey ( sort keys %{ $Config->{KeyMapRegEx} } ) {
-                next KEYMAPREGEX if $OldKey !~ m{ \A $ConfigKey \z }xms;
-                if ( $ReturnData{ $Config->{KeyMapRegEx}->{$ConfigKey} } ) {
-                    $Self->{DebuggerObject}->Notice(
-                        Summary =>
-                            "The data key '$Config->{KeyMapRegEx}->{$ConfigKey}' already exists!",
-                    );
-                    next CONFIGKEY;
-                }
-                $NewKey = $Config->{KeyMapRegEx}->{$ConfigKey};
-                last KEYMAPREGEX;
-            }
-        }
+        ## if we have no match from exact map, try regex map
+        #if ( !$NewKey && $Config->{KeyMapRegEx} ) {
+            #KEYMAPREGEX:
+            #for my $ConfigKey ( sort keys %{ $Config->{KeyMapRegEx} } ) {
+                #next KEYMAPREGEX if $OldKey !~ m{ \A $ConfigKey \z }xms;
+                #if ( $ReturnData{ $Config->{KeyMapRegEx}->{$ConfigKey} } ) {
+                    #$Self->{DebuggerObject}->Notice(
+                        #Summary =>
+                            #"The data key '$Config->{KeyMapRegEx}->{$ConfigKey}' already exists!",
+                    #);
+                    #next CONFIGKEY;
+                #}
+                #$NewKey = $Config->{KeyMapRegEx}->{$ConfigKey};
+                #last KEYMAPREGEX;
+            #}
+        #}
 
-        # if we still have no match, apply default
-        if ( !$NewKey ) {
+        ## if we still have no match, apply default
+        #if ( !$NewKey ) {
 
-            # check map type options
-            if ( $Config->{KeyMapDefault}->{MapType} eq 'Keep' ) {
-                $NewKey = $OldKey;
-            }
-            elsif ( $Config->{KeyMapDefault}->{MapType} eq 'Ignore' ) {
-                next CONFIGKEY;
-            }
-            elsif ( $Config->{KeyMapDefault}->{MapType} eq 'MapTo' ) {
+            ## check map type options
+            #if ( $Config->{KeyMapDefault}->{MapType} eq 'Keep' ) {
+                #$NewKey = $OldKey;
+            #}
+            #elsif ( $Config->{KeyMapDefault}->{MapType} eq 'Ignore' ) {
+                #next CONFIGKEY;
+            #}
+            #elsif ( $Config->{KeyMapDefault}->{MapType} eq 'MapTo' ) {
 
-                # check if we already have a key with the same name
-                if ( $ReturnData{ $Config->{KeyMapDefault}->{MapTo} } ) {
-                    $Self->{DebuggerObject}->Notice(
-                        Summary => "The data key $Config->{KeyMapDefault}->{MapTo} already exists!",
-                    );
-                    next CONFIGKEY;
-                }
+                ## check if we already have a key with the same name
+                #if ( $ReturnData{ $Config->{KeyMapDefault}->{MapTo} } ) {
+                    #$Self->{DebuggerObject}->Notice(
+                        #Summary => "The data key $Config->{KeyMapDefault}->{MapTo} already exists!",
+                    #);
+                    #next CONFIGKEY;
+                #}
 
-                $NewKey = $Config->{KeyMapDefault}->{MapTo};
-            }
-        }
+                #$NewKey = $Config->{KeyMapDefault}->{MapTo};
+            #}
+        #}
 
-        # sanity check - we should have a translated key now
-        if ( !$NewKey ) {
-            return $Self->{DebuggerObject}->Error( Summary => "Could not map data key $NewKey!" );
-        }
+        ## sanity check - we should have a translated key now
+        #if ( !$NewKey ) {
+            #return $Self->{DebuggerObject}->Error( Summary => "Could not map data key $NewKey!" );
+        #}
 
-        # map value
-        my $OldValue = $Param{Data}->{$OldKey};
+        ## map value
+        #my $OldValue = $Param{Data}->{$OldKey};
 
-        # if value is no string, just pass through
-        if ( !IsString($OldValue) ) {
-            $ReturnData{$NewKey} = $OldValue;
-            next CONFIGKEY;
-        }
+        ## if value is no string, just pass through
+        #if ( !IsString($OldValue) ) {
+            #$ReturnData{$NewKey} = $OldValue;
+            #next CONFIGKEY;
+        #}
 
-        # check if we have a value mapping for the specific key
-        my $ValueMap = $Config->{ValueMap}->{$NewKey};
-        if ($ValueMap) {
+        ## check if we have a value mapping for the specific key
+        #my $ValueMap = $Config->{ValueMap}->{$NewKey};
+        #if ($ValueMap) {
 
-            # first check in exact (1:1) map
-            if ( $ValueMap->{ValueMapExact} && $ValueMap->{ValueMapExact}->{$OldValue} ) {
-                $ReturnData{$NewKey} = $ValueMap->{ValueMapExact}->{$OldValue};
-                next CONFIGKEY;
-            }
+            ## first check in exact (1:1) map
+            #if ( $ValueMap->{ValueMapExact} && $ValueMap->{ValueMapExact}->{$OldValue} ) {
+                #$ReturnData{$NewKey} = $ValueMap->{ValueMapExact}->{$OldValue};
+                #next CONFIGKEY;
+            #}
 
-            # if we have no match from exact map, try regex map
-            if ( $ValueMap->{ValueMapRegEx} ) {
-                VALUEMAPREGEX:
-                for my $ConfigKey ( sort keys %{ $ValueMap->{ValueMapRegEx} } ) {
-                    next VALUEMAPREGEX if $OldValue !~ m{ \A $ConfigKey \z }xms;
-                    $ReturnData{$NewKey} = $ValueMap->{ValueMapRegEx}->{$ConfigKey};
-                    next CONFIGKEY;
-                }
-            }
-        }
+            ## if we have no match from exact map, try regex map
+            #if ( $ValueMap->{ValueMapRegEx} ) {
+                #VALUEMAPREGEX:
+                #for my $ConfigKey ( sort keys %{ $ValueMap->{ValueMapRegEx} } ) {
+                    #next VALUEMAPREGEX if $OldValue !~ m{ \A $ConfigKey \z }xms;
+                    #$ReturnData{$NewKey} = $ValueMap->{ValueMapRegEx}->{$ConfigKey};
+                    #next CONFIGKEY;
+                #}
+            #}
+        #}
 
-        # if we had no mapping, apply default
+        ## if we had no mapping, apply default
 
-        # keep current value
-        if ( $Config->{ValueMapDefault}->{MapType} eq 'Keep' ) {
-            $ReturnData{$NewKey} = $OldValue;
-            next CONFIGKEY;
-        }
+        ## keep current value
+        #if ( $Config->{ValueMapDefault}->{MapType} eq 'Keep' ) {
+            #$ReturnData{$NewKey} = $OldValue;
+            #next CONFIGKEY;
+        #}
 
-        # map to default value
-        if ( $Config->{ValueMapDefault}->{MapType} eq 'MapTo' ) {
-            $ReturnData{$NewKey} = $Config->{ValueMapDefault}->{MapTo};
-            next CONFIGKEY;
-        }
+        ## map to default value
+        #if ( $Config->{ValueMapDefault}->{MapType} eq 'MapTo' ) {
+            #$ReturnData{$NewKey} = $Config->{ValueMapDefault}->{MapTo};
+            #next CONFIGKEY;
+        #}
 
-        # implicit ignore
-        next CONFIGKEY;
-    }
+        ## implicit ignore
+        #next CONFIGKEY;
+    #}
 
 
-    # COMPLEMENTO
-    # MAPEIA AS SUBCHAVES
-    for my $OldKey ( sort keys %ReturnData ) {
-      if ($OldKey =~ /:/){
-          my $ValueR=$ReturnData{$OldKey};
+    ## COMPLEMENTO
+    ## MAPEIA AS SUBCHAVES
+    #for my $OldKey ( sort keys %ReturnData ) {
+      #if ($OldKey =~ /:/){
+          #my $ValueR=$ReturnData{$OldKey};
           
-          #if ($OldKey =~ /custom_field/){
-            ##se for um campo customizado, a sintaxe é mais simples
-            #my @Levels = split /:/, $OldKey;
-            #push (@{$ReturnData{issue}->{custom_fields}->{item}}, {'field'=>{'id'=>$Levels[1]},'value'=>$ValueR});
+          ##if ($OldKey =~ /custom_field/){
+            ###se for um campo customizado, a sintaxe é mais simples
+            ##my @Levels = split /:/, $OldKey;
+            ##push (@{$ReturnData{issue}->{custom_fields}->{item}}, {'field'=>{'id'=>$Levels[1]},'value'=>$ValueR});
           
-          #} else {
-              # Verifica se é um sub campo do Mantis
-              # Separe as subchaves com ":". Por exemplo issue:category irá virar {issue}->{category}
-              my $stringToEval;
-              my @Levels = split /:/, $OldKey;
-              my $nLevels = scalar @Levels;
+          ##} else {
+              ## Verifica se é um sub campo do Mantis
+              ## Separe as subchaves com ":". Por exemplo issue:category irá virar {issue}->{category}
+              #my $stringToEval;
+              #my @Levels = split /:/, $OldKey;
+              #my $nLevels = scalar @Levels;
 
-              for my $i (0 .. ($nLevels-1)){
-                if($i == 0){
-                    $stringToEval='$ReturnData{'.$Levels[$i].'}';
-                } else {
-                    $stringToEval.='->{'.$Levels[$i].'}';
-                }
-              }
-              $stringToEval.="='$ValueR';";
-              eval $stringToEval;
-          #}
+              #for my $i (0 .. ($nLevels-1)){
+                #if($i == 0){
+                    #$stringToEval='$ReturnData{'.$Levels[$i].'}';
+                #} else {
+                    #$stringToEval.='->{'.$Levels[$i].'}';
+                #}
+              #}
+              #$stringToEval.="='$ValueR';";
+              #eval $stringToEval;
+          ##}
 
-          delete $ReturnData{$OldKey};
-      }
-    }
+          #delete $ReturnData{$OldKey};
+      #}
+    #}
 # EO COMPLEMENTO
 
 
