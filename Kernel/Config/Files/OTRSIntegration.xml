@@ -62,4 +62,36 @@
             <String Regex="">passwordxyz</String>
         </Setting>
     </ConfigItem>
+    <ConfigItem Name="OTRSIntegration::WebServiceName" Required="1" Valid="1">
+        <Description Translatable="1">WebService Name of another OTRS</Description>
+        <Group>OTRSIntegration</Group>
+        <SubGroup>Configuration</SubGroup>
+        <Setting>
+            <String Regex="">OTRS</String>
+        </Setting>
+    </ConfigItem>
+    <ConfigItem Name="OTRSIntegration::InvokerNameArticleCreate" Required="1" Valid="1">
+        <Description Translatable="1">Invoker Name Article Create</Description>
+        <Group>OTRSIntegration</Group>
+        <SubGroup>Configuration</SubGroup>
+        <Setting>
+            <String Regex="">ArticleCreate</String>
+        </Setting>
+    </ConfigItem>
+    <ConfigItem Name="OTRSIntegration::InvokerNameRemoteQueueUpdate" Required="1" Valid="1">
+        <Description Translatable="1">Invoker Name Remote Queue Update</Description>
+        <Group>OTRSIntegration</Group>
+        <SubGroup>Configuration</SubGroup>
+        <Setting>
+            <String Regex="">RemoteQueueUpdate</String>
+        </Setting>
+    </ConfigItem>
+    <ConfigItem Name="OTRSIntegration::InvokerNameRemoteTicketUpdate" Required="1" Valid="1">
+        <Description Translatable="1">Invoker Name Remote Ticket Update</Description>
+        <Group>OTRSIntegration</Group>
+        <SubGroup>Configuration</SubGroup>
+        <Setting>
+            <String Regex="">RemoteTicketUpdate</String>
+        </Setting>
+    </ConfigItem>
 </otrs_config>
