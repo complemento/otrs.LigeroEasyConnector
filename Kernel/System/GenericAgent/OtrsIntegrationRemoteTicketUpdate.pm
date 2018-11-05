@@ -43,12 +43,12 @@ sub Run {
     my $TimeObject = $Kernel::OM->Get('Kernel::System::Time');
     my $TicketObject = $Kernel::OM->Get('Kernel::System::Ticket');
 
-    #use Data::Dumper;
+    use Data::Dumper;
 
-    #$Kernel::OM->Get('Kernel::System::Log')->Log(
-    #    Priority => 'error',
-    #    Message  => "ENTROU AQUI",
-    #);
+    $Kernel::OM->Get('Kernel::System::Log')->Log(
+        Priority => 'error',
+        Message  => "ENTROU AQUI ".Dumper(\%Param),
+    );
 
     my $WebService = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
         Name => $Kernel::OM->Get('Kernel::Config')->Get('OTRSIntegration::WebServiceName'),
