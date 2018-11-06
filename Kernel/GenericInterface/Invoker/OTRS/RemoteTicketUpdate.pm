@@ -156,12 +156,14 @@ sub PrepareRequest {
     ## para os anexos validos (verificar se devemos retirar os anexos do html do texto do artigo)
         ## montar array de hash com os anexos
 
-    $ReturnData{Ticket}->{PriorityID} = $Ticket{"PriorityID"};
-    $ReturnData{Ticket}->{SLAID} = $Ticket{"SLAID"};
-    $ReturnData{Ticket}->{ServiceID} = $Ticket{"ServiceID"};
-    $ReturnData{Ticket}->{StateID} = $Ticket{"StateID"};
+    
+
+    $ReturnData{Ticket}->{Priority} = $Ticket{"Priority"};
+    $ReturnData{Ticket}->{SLA} = $Ticket{"SLA"};
+    $ReturnData{Ticket}->{Service} = $Ticket{"Service"};
+    $ReturnData{Ticket}->{State} = $Ticket{"State"};
     $ReturnData{Ticket}->{Title} = $Ticket{"Title"};
-    $ReturnData{Ticket}->{TypeID} = $Ticket{"TypeID"};
+    $ReturnData{Ticket}->{Type} = $Ticket{"Type"};
 
     my $EncodeObject = $Kernel::OM->Get("Kernel::System::Encode");
 
