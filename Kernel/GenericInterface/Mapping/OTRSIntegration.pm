@@ -165,6 +165,38 @@ sub Map {
         %ReturnData = %{ $Param{Data} };
     }
 
+    #Trata coringas
+
+    for my $Map (keys %{$Config->{KeyMapExact}}){
+        my %Val;
+        my $MapVal = $Config->{KeyMapExact}->{$Map};
+        my $arrayMark = index($Map,'[*]');
+        if($arrayMark > -1){
+            my $MapArray = substr $Map, 0, $arrayMark-2;
+
+            my $evalArray = '$Val{ArrayValue} = $Param{Data}->'.$MapArray;
+
+            eval $evalArray;
+
+            my $arrayCount = scalar @{$Val{ArrayValue}};
+
+            for (my $i = 0; $i < $arrayCount; $i++){
+
+                my $newKey = $Map =~ s/\*/$i/r;
+                my $newVal = $MapVal =~ s/\*/$i/r;
+
+                $Config->{KeyMapExact}->{$newKey} = $newVal;
+                for my $Map1 (keys %{$Config->{ValueMap}->{$Map}}){
+                    %{$Config->{ValueMap}->{$newKey}->{$Map1}} = %{$Config->{ValueMap}->{$Map}->{$Map1}}
+                }
+
+            }
+
+            delete $Config->{KeyMapExact}->{$Map};
+            delete $Config->{ValueMap}->{$Map};
+        }
+    }
+
     # Verifica os mapeamentos indicados na configuração
     for my $Map (keys %{$Config->{KeyMapExact}}){
         my %Val;
