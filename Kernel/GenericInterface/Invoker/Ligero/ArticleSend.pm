@@ -1,4 +1,4 @@
-package Kernel::GenericInterface::Invoker::OTRS::ArticleSend;
+package Kernel::GenericInterface::Invoker::Ligero::ArticleSend;
 
 use strict;
 use warnings;

@@ -1,7 +1,7 @@
 #
 # Updates remote OTRS Queue based on local DynamicField RemoteQueue
 #
-package Kernel::GenericInterface::Invoker::OTRS::RemoteQueueUpdate;
+package Kernel::GenericInterface::Invoker::Ligero::RemoteQueueUpdate;
 
 use strict;
 use warnings;

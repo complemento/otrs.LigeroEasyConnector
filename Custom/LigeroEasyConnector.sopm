@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <otrs_package version="1.1">
     <Name>LigeroEasyConnector</Name>
-    <Version>5.0.1</Version>
+    <Version>5.0.2</Version>
     <Vendor>Complemento [Ligero]</Vendor>
     <URL>http://www.complemento.net.br/</URL>
     <License>GNU GENERAL PUBLIC LICENSE Version 2, June 1991</License>
@@ -14,5 +14,8 @@
         <File Location="Kernel/Config/Files/LigeroEasyConnector.xml" Permission="644"></File>
         <File Location="Kernel/GenericInterface/Invoker/Ligero/LigeroEasyConnector.pm" Permission="644"></File>
         <File Location="Kernel/GenericInterface/Operation/Ligero/LigeroEasyConnector.pm" Permission="644"></File>
+        <File Location="Kernel/GenericInterface/Mapping/LigeroEasyConnector.pm" Permission="644"></File>
+        <File Location="Kernel/GenericInterface/Invoker/Ligero/ArticleSend.pm" Permission="644"></File>
+        <File Location="Kernel/GenericInterface/Invoker/Ligero/RemoteQueueUpdate.pm" Permission="644"></File>
     </Filelist>
 </otrs_package>
