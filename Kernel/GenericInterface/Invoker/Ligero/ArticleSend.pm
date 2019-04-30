@@ -1,7 +1,4 @@
-#
-# Updates remote OTRS Queue based on local DynamicField RemoteQueue
-#
-package Kernel::GenericInterface::Invoker::OTRS::RemoteTicketUpdate;
+package Kernel::GenericInterface::Invoker::Ligero::ArticleSend;
 
 use strict;
 use warnings;
@@ -83,8 +80,8 @@ sub PrepareRequest {
     my ( $Self, %Param ) = @_;
 
     # we need a TicketNumber
-    if ( !IsStringWithData( $Param{Data}->{TicketID} ) ) {
-        return $Self->{DebuggerObject}->Error( Summary => 'Got no TicketID' );
+    if ( !IsStringWithData( $Param{Data}->{ArticleID} ) ) {
+        return $Self->{DebuggerObject}->Error( Summary => 'Got no ArticleID' );
     } 
 
     # Caso seja necessario filtrar por webservice ID
@@ -107,67 +104,54 @@ sub PrepareRequest {
     $ReturnData{UserLogin} = $Kernel::OM->Get('Kernel::Config')->Get('OTRSIntegration::UserLogin');
     $ReturnData{Password} = $Kernel::OM->Get('Kernel::Config')->Get('OTRSIntegration::Password');
 
-    my %Ticket = $Kernel::OM->Get('Kernel::System::Ticket')->TicketGet(
-            TicketID => $Param{Data}->{TicketID}, 
+    my %Article = $Kernel::OM->Get('Kernel::System::Ticket')->ArticleGet(
+            ArticleID => $Param{Data}->{ArticleID}, 
             DynamicFields => 1,
             Extended => 1,
             UserID => 1
         );
 
     # Verificar isso é necessário no ambiente de produção - encode_utf8
-    for (keys %Ticket){
-        $Ticket{$_} = encode_utf8($Ticket{$_});
+    for (keys %Article){
+        $Article{$_} = encode_utf8($Article{$_});
     }
 
-    if(!$Ticket{DynamicField_CustomerTicketID}){
+    if(!$Article{DynamicField_CustomerTicketID}){
         return $Self->{DebuggerObject}->Error( Summary => 'Not a Integration Ticket' );
     }
-
-    # Verificar se este ticket é integrado (se ele possui o campo dinamico )
-    $ReturnData{TicketID} = $Ticket{"DynamicField_CustomerTicketID"};
-    
-
-    # Vamos mandar um texto padrão?
-    #$ReturnData{Article} = \%Article;
-    
-    ### Pegar anexos
-    #my @Ats;
-
-    #my %Attachments = $Kernel::OM->Get('Kernel::System::Ticket')->ArticleAttachmentIndex(TiID => $Param{Data}->{ArticleID}, UserID => 1);
-    
-    #for (keys %Attachments){
-        #my %Attachment = $Kernel::OM->Get('Kernel::System::Ticket')->ArticleAttachment(
-            #ArticleID => $Param{Data}->{ArticleID},
-            #FileID    => $_,   # as returned by ArticleAttachmentIndex
-            #UserID    => 1,
-        #);
-        #my %At;
-        #$At{Content} = encode_base64($Attachment{Content});
-        #$At{ContentType} = $Attachments{$_}->{ContentType};
-        #$At{Filename} = $Attachments{$_}->{Filename};
         
-        #push @Ats, \%At;
-    #}
+    # Verificar se este ticket é integrado (se ele possui o campo dinamico )
+    $ReturnData{TicketID} = $Article{"DynamicField_CustomerTicketID"};
+    $ReturnData{Article} = \%Article;
     
-    #$ReturnData{Attachment} = \@Ats;
+    ## Pegar anexos
+    my @Ats;
+
+    my %Attachments = $Kernel::OM->Get('Kernel::System::Ticket')->ArticleAttachmentIndex(ArticleID => $Param{Data}->{ArticleID}, UserID => 1);
+    
+    for (keys %Attachments){
+        my %Attachment = $Kernel::OM->Get('Kernel::System::Ticket')->ArticleAttachment(
+            ArticleID => $Param{Data}->{ArticleID},
+            FileID    => $_,   # as returned by ArticleAttachmentIndex
+            UserID    => 1,
+        );
+        my %At;
+        $At{Content} = encode_base64($Attachment{Content});
+        $At{ContentType} = $Attachments{$_}->{ContentType};
+        $At{Filename} = $Attachments{$_}->{Filename};
+        
+        push @Ats, \%At;
+    }
+    
+    $ReturnData{Attachment} = \@Ats;
     
     #$Kernel::OM->Get('Kernel::System::Log')->Log( Priority => 'error', Message => "aaaaaaaaaaaa ".Dumper(%Attachments));
     
     ## para os anexos validos (verificar se devemos retirar os anexos do html do texto do artigo)
         ## montar array de hash com os anexos
 
-    
-
-    $ReturnData{Ticket}->{Priority} = $Ticket{"Priority"};
-    $ReturnData{Ticket}->{SLA} = $Ticket{"SLA"};
-    $ReturnData{Ticket}->{Service} = $Ticket{"Service"};
-    $ReturnData{Ticket}->{State} = $Ticket{"State"};
-    $ReturnData{Ticket}->{Title} = $Ticket{"Title"};
-    $ReturnData{Ticket}->{Type} = $Ticket{"Type"};
-
     my $EncodeObject = $Kernel::OM->Get("Kernel::System::Encode");
 
-    # Prepara envio
     $EncodeObject->EncodeInput( \%ReturnData );
     
     return {

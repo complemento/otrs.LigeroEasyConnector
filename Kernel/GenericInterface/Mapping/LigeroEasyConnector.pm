@@ -1,4 +1,4 @@
-package Kernel::GenericInterface::Mapping::OTRSIntegration;
+package Kernel::GenericInterface::Mapping::LigeroEasyConnector;
 
 use strict;
 use warnings;
