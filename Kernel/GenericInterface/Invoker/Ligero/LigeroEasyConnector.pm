@@ -215,6 +215,7 @@ sub PrepareRequest {
     #}
         
     # Verificar se este ticket é integrado (se ele possui o campo dinamico )
+    #%ReturnData = %Ticket;
     $ReturnData{Ticket} 			= \%Ticket if %Ticket;
     $ReturnData{Article} 			= \%Article if %Article;
     $ReturnData{Attachment} 		= \@Ats if @Ats;
@@ -222,12 +223,12 @@ sub PrepareRequest {
     $ReturnData{CustomerUser} 		= \%CustomerUser if %CustomerUser;
     #$ReturnData{Service} 			= \%Service if %Service;
     #$ReturnData{SLA} 				= \%SLA if %SLA;
-    
+    #$ReturnData 			= %Ticket if %Ticket;
     my $EncodeObject = $Kernel::OM->Get("Kernel::System::Encode");
 
     $EncodeObject->EncodeInput( \%ReturnData );
 
-    #$Kernel::OM->Get('Kernel::System::Log')->Log( Priority => 'error', Message => "aaaaaaaaaaaa ".Dumper(%ReturnData));
+    #$Kernel::OM->Get('Kernel::System::Log')->Log( Priority => 'error', Message => "aaaaaaaaaaaa ".Dumper(\%ReturnData));
         
     return {
         Success => 1,
