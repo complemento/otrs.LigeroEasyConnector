@@ -793,7 +793,7 @@ sub RequesterPerformRequest {
     }
 
     # Return early in case an error on response.
-    if ($ResponseError) {
+    if ($ResponseError && (!$Config->{AcceptErrors} || ($Config->{AcceptErrors} && $Config->{AcceptErrors} eq 'No'))) {
 
         my $ResponseData = 'No content provided.';
         if ( IsStringWithData($ResponseContent) ) {

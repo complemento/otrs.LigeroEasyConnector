@@ -122,7 +122,7 @@ sub Run {
     if ( $CommunicationType eq 'Requester' ) {
 
         NEEDED:
-        for my $Needed (qw( Host DefaultCommand Timeout )) {
+        for my $Needed (qw( Host DefaultCommand AcceptErrors Timeout )) {
             $TransportConfig->{$Needed} = $GetParam->{$Needed};
             next NEEDED if defined $GetParam->{$Needed};
 
@@ -329,7 +329,7 @@ sub _ShowEdit {
     # Extract display parameters from transport config.
     for my $ParamName (
         qw(
-        Host DefaultCommand KeepAlive MaxLength Timeout
+        Host DefaultCommand AcceptErrors KeepAlive MaxLength Timeout
         AdditionalHeaders
         )
         )
@@ -356,6 +356,15 @@ sub _ShowEdit {
             Data          => \@PossibleRequestMethods,
             Name          => 'DefaultCommand',
             SelectedValue => $Param{DefaultCommand} || 'GET',
+            Sort          => 'AlphanumericValue',
+            Class         => 'Modernize',
+        );
+
+        # create accept errors select
+        $Param{AcceptErrorsStrg} = $LayoutObject->BuildSelection(
+            Data          => { "Yes" => "Yes", "No" => "No"},
+            Name          => 'AcceptErrors',
+            SelectedValue => $Param{AcceptErrors} || 'NO',
             Sort          => 'AlphanumericValue',
             Class         => 'Modernize',
         );
@@ -550,7 +559,7 @@ sub _ShowEdit {
     $Param{ValueCounter} = $ValueCounter;
 
     $Output .= $LayoutObject->Output(
-        TemplateFile => 'AdminGenericInterfaceTransportHTTPREST',
+        TemplateFile => 'AdminGenericInterfaceTransportLigeroEasyConnectorREST',
         Data         => { %Param, },
     );
 
@@ -568,7 +577,7 @@ sub _GetParams {
     # Get parameters from web browser.
     for my $ParamName (
         qw(
-        Host DefaultCommand MaxLength KeepAlive Timeout
+        Host DefaultCommand AcceptErrors MaxLength KeepAlive Timeout
         AuthType BasicAuthUser BasicAuthPassword
         UseProxy ProxyHost ProxyUser ProxyPassword ProxyExclude
         UseSSL SSLCertificate SSLKey SSLPassword SSLCAFile SSLCADir
