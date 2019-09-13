@@ -222,6 +222,10 @@ sub PrepareRequest {
     $ReturnData{CustomerUser} 		= \%CustomerUser if %CustomerUser;
     #$ReturnData{Service} 			= \%Service if %Service;
     #$ReturnData{SLA} 				= \%SLA if %SLA;
+
+    if($Param{Data}->{PreResult} && $Param{Data}->{PreResult}->{Data}){
+        $ReturnData{PreResult} = $Param{Data}->{PreResult}->{Data};
+    }
     
     my $EncodeObject = $Kernel::OM->Get("Kernel::System::Encode");
 
@@ -275,31 +279,9 @@ sub HandleResponse {
         };
     }
 
-    # we need a TicketNumber
-    if ( !IsStringWithData( $Param{Data}->{TicketNumber} ) ) {
-
-        return $Self->{DebuggerObject}->Error( Summary => 'Got no TicketNumber!' );
-    }
-
-    # prepare TicketNumber
-    my %ReturnData = (
-        TicketNumber => $Param{Data}->{TicketNumber},
-    );
-
-    # check Action
-    if ( IsStringWithData( $Param{Data}->{Action} ) ) {
-        if ( $Param{Data}->{Action} !~ m{ \A ( .*? ) Test \z }xms ) {
-
-            return $Self->{DebuggerObject}->Error(
-                Summary => 'Got Action but it is not in required format!',
-            );
-        }
-        $ReturnData{Action} = $1;
-    }
-
     return {
         Success => 1,
-        Data    => \%ReturnData,
+        Data    => $Param{Data},
     };
 }
 
