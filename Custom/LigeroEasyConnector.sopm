@@ -15,6 +15,7 @@
         <File Location="Kernel/GenericInterface/Invoker/Ligero/LigeroEasyConnector.pm" Permission="644"></File>
         <File Location="Kernel/GenericInterface/Operation/Ligero/LigeroEasyConnector.pm" Permission="644"></File>
         <File Location="Kernel/GenericInterface/Mapping/LigeroEasyConnector.pm" Permission="644"></File>
+        <File Location="Kernel/GenericInterface/Mapping/XSLTLigero.pm" Permission="644"></File>
         <File Location="Kernel/GenericInterface/Invoker/Ligero/ArticleSend.pm" Permission="644"></File>
         <File Location="Kernel/GenericInterface/Invoker/Ligero/RemoteQueueUpdate.pm" Permission="644"></File>
         <File Location="Kernel/System/GenericAgent/LigeroEasyConnector.pm" Permission="644"></File>
