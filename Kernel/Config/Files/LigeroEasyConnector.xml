@@ -70,6 +70,16 @@
             </Hash>
         </Setting>
     </ConfigItem>
+    <ConfigItem Name="GenericInterface::Mapping::Module###XSLTLigero" Required="1" Valid="1">
+        <Description Translatable="1">GenericInterface module registration for the mapping layer.</Description>
+        <Group>LigeroEasyConnector</Group>
+        <SubGroup>GenericInterface::Mapping::ModuleRegistration</SubGroup>
+        <Setting>
+            <Hash>
+                <Item Key="ConfigDialog">AdminGenericInterfaceMappingXSLT</Item>
+            </Hash>
+        </Setting>
+    </ConfigItem>
     <ConfigItem Name="OTRSIntegration::UserLogin" Required="1" Valid="1">
         <Description Translatable="1">Agent conection user</Description>
         <Group>LigeroEasyConnector</Group>
