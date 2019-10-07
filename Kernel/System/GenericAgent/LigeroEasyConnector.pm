@@ -37,42 +37,35 @@ sub Run {
     my $TimeObject = $Kernel::OM->Get('Kernel::System::Time');
     my $TicketObject = $Kernel::OM->Get('Kernel::System::Ticket');
 
-    #my @ArticleIndex = $TicketObject->ArticleGet(
-    #    %Param,
-    #    Order    => 'DESC', # DESC,ASC - default is ASC
-    #    Limit    => 1,
-    #);
-
-    #use Data::Dumper;
-
-    #$Kernel::OM->Get('Kernel::System::Log')->Log(
-    #    Priority => 'error',
-    #    Message  => "PARAM ".Dumper(@ArticleIndex[0]->{ArticleID}),
-    #);
+    my @ArticleIndex = $TicketObject->ArticleGet(
+        %Param,
+        Order    => 'DESC', # DESC,ASC - default is ASC
+        Limit    => 1,
+    );
 
     
 
     my %Data = (
-        'TicketID' => $Param{TicketID}
+        'TicketID' => $Param{TicketID},
+        'ArticleID' => @ArticleIndex[0]->{ArticleID}
     );
 
     
 
     use Data::Dumper;
+    $Kernel::OM->Get('Kernel::System::Log')->Log(
+        Priority => 'error',
+        Message  => "TicketID ".$Param{TicketID}." ArticleID ".@ArticleIndex[0]->{ArticleID},
+    );
 
-    
+    my $WebService = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
+        Name => $Param{New}->{'WebServiceName'},
+    );
 
     # check needed param
-    if ( $Param{New}->{'PreWebServiceName'} && $Param{New}->{'PreWebServiceInvoker'}) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => "CHEGOU AQUI ".$Param{New}->{'PreWebServiceName'}." ".$Param{New}->{'PreWebServiceInvoker'},
-        );
-        my $WebService = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
-            Name => $Param{New}->{'PreWebServiceName'},
-        );
+    if ($Param{New}->{'PreWebServiceInvoker'}) {
 
-         my $Result = $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
+        my $Result = $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
             WebserviceID => $WebService->{ID},
             Invoker      => $Param{New}->{'PreWebServiceInvoker'},
             Data         => \%Data
@@ -81,16 +74,22 @@ sub Run {
         $Data{PreResult} = $Result;
     }
 
-    if ( $Param{New}->{'PostWebServiceName'} && $Param{New}->{'PostWebServiceInvoker'}) {
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => "CHEGOU AQUI Post ".$Param{New}->{'PostWebServiceName'}." ".$Param{New}->{'PostWebServiceInvoker'},
-        );
-        my $WebService = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
-            Name => $Param{New}->{'PostWebServiceName'},
+    # check needed param
+    if ($Param{New}->{'WebServiceInvoker'}) {
+        
+
+        my $Result = $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
+            WebserviceID => $WebService->{ID},
+            Invoker      => $Param{New}->{'WebServiceInvoker'},
+            Data         => \%Data
         );
 
-         my $Result = $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
+        $Data{Result} = $Result;
+    }
+
+    if ($Param{New}->{'PostWebServiceInvoker'}) {
+
+        my $Result = $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
             WebserviceID => $WebService->{ID},
             Invoker      => $Param{New}->{'PostWebServiceInvoker'},
             Data         => \%Data
