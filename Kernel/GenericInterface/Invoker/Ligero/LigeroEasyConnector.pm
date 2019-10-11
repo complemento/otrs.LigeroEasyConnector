@@ -53,6 +53,8 @@ sub new {
 
     $Self->{DebuggerObject} = $Param{DebuggerObject};
 
+    
+
     return $Self;
 }
 
@@ -78,6 +80,8 @@ prepare the invocation of the configured remote webservice.
 
 sub PrepareRequest {
     my ( $Self, %Param ) = @_;
+
+    
 
     # Caso seja necessario filtrar por webservice ID
     #my %DebuggerInfo = %{$Self->{DebuggerObject}};

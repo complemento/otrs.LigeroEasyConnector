@@ -15,9 +15,8 @@ use Encode;
 use HTTP::Status;
 use MIME::Base64;
 use MIME::Entity;
-use DIME::Tools;
-use DIME::Payload;
-use DIME::Message;
+use Mojo::UserAgent;
+use XML::Simple;
 use PerlIO;
 use SOAP::Lite;
 
@@ -59,6 +58,8 @@ sub new {
     # set binary mode for STDIN and STDOUT (normally is the same as :raw)
     binmode STDIN;
     binmode STDOUT;
+
+    
 
     return $Self;
 }
@@ -466,6 +467,12 @@ receive the response and return its data.
 sub RequesterPerformRequest {
     my ( $Self, %Param ) = @_;
 
+    use Data::Dumper;
+    $Kernel::OM->Get('Kernel::System::Log')->Log(
+        Priority => 'error',
+        Message  => "SELF AQUI ".Dumper(\%Param),
+    );
+
     # check transport config
     if ( !IsHashRefWithData( $Self->{TransportConfig} ) ) {
         return {
@@ -615,36 +622,6 @@ sub RequesterPerformRequest {
             timeout => 60,
         );
     };
-
-    my $ent = build MIME::Entity
-    Type        => "text/plain",
-    Path        => "/opt/otrs/var/tmp/teste.txt",
-    Filename    => "teste.txt",
-    Disposition => "attachment";
-
-    my $payload =  DIME::Payload->new();
-        $payload->attach(Path => "/opt/otrs/var/tmp/teste.txt",
-                         MIMEType => 'text/plain',
-                        Dynamic => 1);
-        
-        my $message = DIME::Message->new();
-
-        $message->add_payload($payload);
-
-    if($Param{Operation} eq 'createAttachment'){
-        use Data::Dumper;
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => " CHEGOU AQUI ".Dumper($message->print_data()),
-        );
-
-        $SOAPHandle = eval {
-            SOAP::Lite->autotype(0)->default_ns( $Config->{NameSpace} )->parts([ $payload ])->proxy(
-                $Config->{Endpoint},
-                timeout => 60,
-            );
-        };
-    }
     # prepare connect
     
     my $SOAPHandleFault = $@ || '';
@@ -707,134 +684,284 @@ sub RequesterPerformRequest {
         $SOAPHandle->transport()->http_request()->headers()->push_header(%Headers);
     }
 
-    my $SOAPResult = eval {
-        $SOAPHandle->call(@CallData);
-    };
-    my $SOAPResultFault = $@ || '';
-    if ($SOAPResultFault) {
-        return {
-            Success      => 0,
-            ErrorMessage => 'Error in SOAP call: ' . $SOAPResultFault,
-        };
-    }
+    if($Param{Operation} eq 'createAttachment') {
 
-    # check if the soap result is there
-    if ( !defined $SOAPResult || !$SOAPResult->body() ) {
-        return {
-            Success      => 0,
-            ErrorMessage => 'Got no result body from soap call',
-        };
-    }
+        my $serializer = SOAP::Serializer->new();
 
-    # send sent data to debugger
-    if ( !$SOAPResult->context()->transport()->proxy()->http_response()->request()->content() ) {
-        return {
-            Success      => 0,
-            ErrorMessage => 'SOAP Transport: Could not get XML data sent to remote system',
-        };
-    }
-    my $XMLRequest = $SOAPResult->context()->transport()->proxy()->http_response()->request()->content();
+        my $ua = Mojo::UserAgent->new;
 
-    # get encode object
-    my $EncodeObject = $Kernel::OM->Get('Kernel::System::Encode');
+        my $SOAP_request = $serializer->envelope(method=>@CallData);
 
-    $EncodeObject->EncodeInput( \$XMLRequest );
-    $Self->{DebuggerObject}->Debug(
-        Summary => 'XML data sent to remote system',
-        Data    => $XMLRequest,
-    );
-
-    # check received data
-    if ( !$SOAPResult->context()->transport()->proxy()->http_response()->content() ) {
-        return {
-            Success      => 0,
-            ErrorMessage => 'Could not get XML data received from remote system',
-        };
-    }
-    my $XMLResponse = $SOAPResult->context()->transport()->proxy()->http_response()->content();
-
-    # convert charset if necessary
-    if ( $Config->{Encoding} && $Config->{Encoding} !~ m{ \A utf -? 8 \z }xmsi ) {
-        $XMLResponse = $EncodeObject->Convert(
-            Text => $XMLResponse,
-            From => $Config->{Encoding},
-            To   => 'utf-8',
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => " CALL DATA ".$SOAP_request,
         );
-    }
-    else {
-        $EncodeObject->EncodeInput( \$XMLResponse );
-    }
 
-    # send processed data to debugger
-    $Self->{DebuggerObject}->Debug(
-        Summary => 'Xml data received from remote system',
-        Data    => $XMLResponse,
-    );
+        my $Asset = Mojo::Asset::File->new(path => "/opt/dev/teste.png");
 
-    # deserialize response
-    my $Deserialized = eval {
-        SOAP::Deserializer->deserialize($XMLResponse);
-    };
+        my $post = $ua->post("http://172.26.22.148:8080/axis/services/USD_R11_WebService" 
+        => {'SOAPAction' => '','Content-Type'=>'multipart/related'} 
+        => multipart => [
+                {content => $SOAP_request},
+                {file => $Asset}
+            ]
+        );
 
-    # check if deserializing was successful
-    if ( !defined $Deserialized || !$Deserialized->body() ) {
+        use Data::Dumper;
+        $Kernel::OM->Get('Kernel::System::Log')->Log(
+            Priority => 'error',
+            Message  => " POST DATA ".Dumper($post->result->body),
+        );
+
+        # check if the soap result is there
+        if ( !defined $post->result || !$post->result->body ) {
+            return {
+                Success      => 0,
+                ErrorMessage => 'Got no result body from soap call',
+            };
+        }
+
+        # send sent data to debugger
+        if ( !$SOAP_request ) {
+            return {
+                Success      => 0,
+                ErrorMessage => 'SOAP Transport: Could not get XML data sent to remote system',
+            };
+        }
+        my $XMLRequest = $SOAP_request;
+
+        # get encode object
+        my $EncodeObject = $Kernel::OM->Get('Kernel::System::Encode');
+
+        $EncodeObject->EncodeInput( \$XMLRequest );
+        $Self->{DebuggerObject}->Debug(
+            Summary => 'XML data sent to remote system',
+            Data    => $XMLRequest,
+        );
+
+        # check received data
+        if ( !$post->result->body ) {
+            return {
+                Success      => 0,
+                ErrorMessage => 'Could not get XML data received from remote system',
+            };
+        }
+        my $XMLResponse = $post->result->body;
+
+        # convert charset if necessary
+        if ( $Config->{Encoding} && $Config->{Encoding} !~ m{ \A utf -? 8 \z }xmsi ) {
+            $XMLResponse = $EncodeObject->Convert(
+                Text => $XMLResponse,
+                From => $Config->{Encoding},
+                To   => 'utf-8',
+            );
+        }
+        else {
+            $EncodeObject->EncodeInput( \$XMLResponse );
+        }
+
+        # send processed data to debugger
+        $Self->{DebuggerObject}->Debug(
+            Summary => 'Xml data received from remote system',
+            Data    => $XMLResponse,
+        );
+
+        # deserialize response
+        my $Deserialized = eval {
+            SOAP::Deserializer->deserialize($XMLResponse);
+        };
+
+        # check if deserializing was successful
+        if ( !defined $Deserialized || !$Deserialized->body() ) {
+            return {
+                Success      => 0,
+                ErrorMessage => 'SOAP Transport: Could not deserialize received XML data',
+            };
+        }
+
+        my $Body = $Deserialized->body();
+
+        # check if we got a SOAP Fault message
+        if ( exists $Body->{'Fault'} ) {
+            my $ErrorMessage = '';
+            for my $Key ( sort keys %{ $Body->{Fault} } ) {
+                $ErrorMessage .= "$Key: $Body->{Fault}->{$Key}, ";
+            }
+            $ErrorMessage = substr $ErrorMessage, 0, -2;
+            return {
+                Success      => 0,
+                ErrorMessage => $ErrorMessage,
+            };
+        }
+
+        # build response wrapper name
+        # possible values are 'Append', 'Plain', 'Replace' and 'Response'
+        my $OperationResponse = $Param{Operation};
+        $Config->{ResponseNameScheme} ||= 'Response';
+        if ( $Config->{ResponseNameScheme} eq 'Response' ) {
+            $Config->{ResponseNameScheme}   = 'Append';
+            $Config->{ResponseNameFreeText} = 'Response';
+        }
+        if ( $Config->{ResponseNameFreeText} ) {
+            if ( $Config->{ResponseNameScheme} eq 'Append' ) {
+
+                # append configured text
+                $OperationResponse .= $Config->{ResponseNameFreeText};
+            }
+            elsif ( $Config->{ResponseNameScheme} eq 'Replace' ) {
+
+                # completely replace name with configured text
+                $OperationResponse = $Config->{ResponseNameFreeText};
+            }
+        }
+
+        # check if we have response data for the specified operation in the soap result
+        if ( !exists $Body->{$OperationResponse} ) {
+            return {
+                Success => 0,
+                ErrorMessage =>
+                    "No response data found for specified operation '$Param{Operation}'"
+                    . " in soap response",
+            };
+        }
+
         return {
-            Success      => 0,
-            ErrorMessage => 'SOAP Transport: Could not deserialize received XML data',
+            Success => 1,
+            Data    => $Body->{$OperationResponse} || undef,
+        };
+    } else {
+        my $SOAPResult = eval {
+            $SOAPHandle->call(@CallData);
+        };
+        
+        my $SOAPResultFault = $@ || '';
+        if ($SOAPResultFault) {
+            return {
+                Success      => 0,
+                ErrorMessage => 'Error in SOAP call: ' . $SOAPResultFault,
+            };
+        }
+
+        # check if the soap result is there
+        if ( !defined $SOAPResult || !$SOAPResult->body() ) {
+            return {
+                Success      => 0,
+                ErrorMessage => 'Got no result body from soap call',
+            };
+        }
+
+        # send sent data to debugger
+        if ( !$SOAPResult->context()->transport()->proxy()->http_response()->request()->content() ) {
+            return {
+                Success      => 0,
+                ErrorMessage => 'SOAP Transport: Could not get XML data sent to remote system',
+            };
+        }
+        my $XMLRequest = $SOAPResult->context()->transport()->proxy()->http_response()->request()->content();
+
+        # get encode object
+        my $EncodeObject = $Kernel::OM->Get('Kernel::System::Encode');
+
+        $EncodeObject->EncodeInput( \$XMLRequest );
+        $Self->{DebuggerObject}->Debug(
+            Summary => 'XML data sent to remote system',
+            Data    => $XMLRequest,
+        );
+
+        # check received data
+        if ( !$SOAPResult->context()->transport()->proxy()->http_response()->content() ) {
+            return {
+                Success      => 0,
+                ErrorMessage => 'Could not get XML data received from remote system',
+            };
+        }
+        my $XMLResponse = $SOAPResult->context()->transport()->proxy()->http_response()->content();
+
+        # convert charset if necessary
+        if ( $Config->{Encoding} && $Config->{Encoding} !~ m{ \A utf -? 8 \z }xmsi ) {
+            $XMLResponse = $EncodeObject->Convert(
+                Text => $XMLResponse,
+                From => $Config->{Encoding},
+                To   => 'utf-8',
+            );
+        }
+        else {
+            $EncodeObject->EncodeInput( \$XMLResponse );
+        }
+
+        # send processed data to debugger
+        $Self->{DebuggerObject}->Debug(
+            Summary => 'Xml data received from remote system',
+            Data    => $XMLResponse,
+        );
+
+        # deserialize response
+        my $Deserialized = eval {
+            SOAP::Deserializer->deserialize($XMLResponse);
+        };
+
+        # check if deserializing was successful
+        if ( !defined $Deserialized || !$Deserialized->body() ) {
+            return {
+                Success      => 0,
+                ErrorMessage => 'SOAP Transport: Could not deserialize received XML data',
+            };
+        }
+
+        my $Body = $Deserialized->body();
+
+        # check if we got a SOAP Fault message
+        if ( exists $Body->{'Fault'} ) {
+            my $ErrorMessage = '';
+            for my $Key ( sort keys %{ $Body->{Fault} } ) {
+                $ErrorMessage .= "$Key: $Body->{Fault}->{$Key}, ";
+            }
+            $ErrorMessage = substr $ErrorMessage, 0, -2;
+            return {
+                Success      => 0,
+                ErrorMessage => $ErrorMessage,
+            };
+        }
+
+        # build response wrapper name
+        # possible values are 'Append', 'Plain', 'Replace' and 'Response'
+        my $OperationResponse = $Param{Operation};
+        $Config->{ResponseNameScheme} ||= 'Response';
+        if ( $Config->{ResponseNameScheme} eq 'Response' ) {
+            $Config->{ResponseNameScheme}   = 'Append';
+            $Config->{ResponseNameFreeText} = 'Response';
+        }
+        if ( $Config->{ResponseNameFreeText} ) {
+            if ( $Config->{ResponseNameScheme} eq 'Append' ) {
+
+                # append configured text
+                $OperationResponse .= $Config->{ResponseNameFreeText};
+            }
+            elsif ( $Config->{ResponseNameScheme} eq 'Replace' ) {
+
+                # completely replace name with configured text
+                $OperationResponse = $Config->{ResponseNameFreeText};
+            }
+        }
+
+        # check if we have response data for the specified operation in the soap result
+        if ( !exists $Body->{$OperationResponse} ) {
+            return {
+                Success => 0,
+                ErrorMessage =>
+                    "No response data found for specified operation '$Param{Operation}'"
+                    . " in soap response",
+            };
+        }
+
+        # all OK - return result
+        return {
+            Success => 1,
+            Data    => $Body->{$OperationResponse} || undef,
         };
     }
 
-    my $Body = $Deserialized->body();
-
-    # check if we got a SOAP Fault message
-    if ( exists $Body->{'Fault'} ) {
-        my $ErrorMessage = '';
-        for my $Key ( sort keys %{ $Body->{Fault} } ) {
-            $ErrorMessage .= "$Key: $Body->{Fault}->{$Key}, ";
-        }
-        $ErrorMessage = substr $ErrorMessage, 0, -2;
-        return {
-            Success      => 0,
-            ErrorMessage => $ErrorMessage,
-        };
-    }
-
-    # build response wrapper name
-    # possible values are 'Append', 'Plain', 'Replace' and 'Response'
-    my $OperationResponse = $Param{Operation};
-    $Config->{ResponseNameScheme} ||= 'Response';
-    if ( $Config->{ResponseNameScheme} eq 'Response' ) {
-        $Config->{ResponseNameScheme}   = 'Append';
-        $Config->{ResponseNameFreeText} = 'Response';
-    }
-    if ( $Config->{ResponseNameFreeText} ) {
-        if ( $Config->{ResponseNameScheme} eq 'Append' ) {
-
-            # append configured text
-            $OperationResponse .= $Config->{ResponseNameFreeText};
-        }
-        elsif ( $Config->{ResponseNameScheme} eq 'Replace' ) {
-
-            # completely replace name with configured text
-            $OperationResponse = $Config->{ResponseNameFreeText};
-        }
-    }
-
-    # check if we have response data for the specified operation in the soap result
-    if ( !exists $Body->{$OperationResponse} ) {
-        return {
-            Success => 0,
-            ErrorMessage =>
-                "No response data found for specified operation '$Param{Operation}'"
-                . " in soap response",
-        };
-    }
-
-    # all OK - return result
-    return {
-        Success => 1,
-        Data    => $Body->{$OperationResponse} || undef,
-    };
+    
 }
 
 =begin Internal:

@@ -2,6 +2,7 @@ package Kernel::System::GenericAgent::LigeroEasyConnector;
 
 use strict;
 use warnings;
+use Time::HiRes qw(gettimeofday);
 
 our @ObjectDependencies = (
     'Kernel::System::Log',
@@ -40,14 +41,21 @@ sub Run {
     my @ArticleIndex = $TicketObject->ArticleGet(
         %Param,
         Order    => 'DESC', # DESC,ASC - default is ASC
-        Limit    => 1,
+        Limit    => 2,
     );
 
-    
+    my $ArticleID;
+    my %Article;
+    for my $FileID ( @ArticleIndex ) {
+        if($FileID->{SenderType} ne 'system'){
+            $ArticleID = $FileID->{ArticleID};
+            %Article = $FileID;
+        }
+    }
 
     my %Data = (
         'TicketID' => $Param{TicketID},
-        'ArticleID' => @ArticleIndex[0]->{ArticleID}
+        'ArticleID' => $ArticleID
     );
 
     
@@ -85,6 +93,47 @@ sub Run {
         );
 
         $Data{Result} = $Result;
+    }
+
+    # check needed param
+    if ($Param{New}->{'WebServiceAttachmentInvoker'}) {
+        
+        my %Index = $TicketObject->ArticleAttachmentIndex(
+            ArticleID                  => $ArticleID,
+            UserID                     => 1,
+            Article                    => \%Article,
+            StripPlainBodyAsAttachment => 3,
+        );
+
+        for my $FileID ( sort keys %Index ) {
+
+            my %Attachment = $TicketObject->ArticleAttachment(
+                ArticleID => $ArticleID,
+                FileID    => $FileID,   # as returned by ArticleAttachmentIndex
+                UserID    => 1,
+            );
+
+            use Data::Dumper;
+            $Kernel::OM->Get('Kernel::System::Log')->Log(
+                Priority => 'error',
+                Message  => "FILE ".Dumper($Index{$FileID}),
+            );
+
+            my $dir = "/opt/otrs/var/tmp/";
+
+            my ($name,$extension) = split(/\./,$Attachment{Filename});
+
+            my $timestamp = int (gettimeofday * 1000);
+
+            my $file = $dir.$timestamp.$Attachment{Filename};
+
+            open(FH, '>', $file) or die $!;
+
+            print FH $Attachment{Content};
+
+            close(FH);
+        }
+        
     }
 
     if ($Param{New}->{'PostWebServiceInvoker'}) {
