@@ -58,14 +58,6 @@ sub Run {
         'ArticleID' => $ArticleID
     );
 
-    
-
-    use Data::Dumper;
-    $Kernel::OM->Get('Kernel::System::Log')->Log(
-        Priority => 'error',
-        Message  => "TicketID ".$Param{TicketID}." ArticleID ".@ArticleIndex[0]->{ArticleID},
-    );
-
     my $WebService = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
         Name => $Param{New}->{'WebServiceName'},
     );
@@ -113,15 +105,7 @@ sub Run {
                 UserID    => 1,
             );
 
-            use Data::Dumper;
-            $Kernel::OM->Get('Kernel::System::Log')->Log(
-                Priority => 'error',
-                Message  => "FILE ".Dumper($Index{$FileID}),
-            );
-
             my $dir = "/opt/otrs/var/tmp/";
-
-            my ($name,$extension) = split(/\./,$Attachment{Filename});
 
             my $timestamp = int (gettimeofday * 1000);
 
@@ -132,6 +116,21 @@ sub Run {
             print FH $Attachment{Content};
 
             close(FH);
+
+            my %UploadData = (
+                'TicketID' => $Param{TicketID},
+                'ArticleID' => $ArticleID,
+                'FilePath' => $file,
+                'FileData' => $Index{$FileID},
+                'PreResult' => $Data{PreResult},
+                'Result' => $Data{Result}
+            );
+
+            $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
+                WebserviceID => $WebService->{ID},
+                Invoker      => $Param{New}->{'WebServiceAttachmentInvoker'},
+                Data         => \%UploadData
+            );
         }
         
     }

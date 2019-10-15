@@ -467,11 +467,13 @@ receive the response and return its data.
 sub RequesterPerformRequest {
     my ( $Self, %Param ) = @_;
 
-    use Data::Dumper;
-    $Kernel::OM->Get('Kernel::System::Log')->Log(
-        Priority => 'error',
-        Message  => "SELF AQUI ".Dumper(\%Param),
-    );
+    my $IsFileUpload = 0;
+    my $FileUploadPath = '';
+    if($Param{Data}->{LigeroFileUploadConfig} && $Param{Data}->{LigeroFileUploadConfig}->{FilePath}){
+        $IsFileUpload = 1;
+        $FileUploadPath = $Param{Data}->{LigeroFileUploadConfig}->{FilePath};
+        delete $Param{Data}->{LigeroFileUploadConfig};
+    }
 
     # check transport config
     if ( !IsHashRefWithData( $Self->{TransportConfig} ) ) {
@@ -684,20 +686,15 @@ sub RequesterPerformRequest {
         $SOAPHandle->transport()->http_request()->headers()->push_header(%Headers);
     }
 
-    if($Param{Operation} eq 'createAttachment') {
+    if($IsFileUpload) {
 
         my $serializer = SOAP::Serializer->new();
 
         my $ua = Mojo::UserAgent->new;
 
-        my $SOAP_request = $serializer->envelope(method=>@CallData);
+        my $SOAP_request = encode('UTF-8',$serializer->autotype(0)->envelope(method=>@CallData));
 
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => " CALL DATA ".$SOAP_request,
-        );
-
-        my $Asset = Mojo::Asset::File->new(path => "/opt/dev/teste.png");
+        my $Asset = Mojo::Asset::File->new(path => $FileUploadPath);
 
         my $post = $ua->post("http://172.26.22.148:8080/axis/services/USD_R11_WebService" 
         => {'SOAPAction' => '','Content-Type'=>'multipart/related'} 
@@ -705,12 +702,6 @@ sub RequesterPerformRequest {
                 {content => $SOAP_request},
                 {file => $Asset}
             ]
-        );
-
-        use Data::Dumper;
-        $Kernel::OM->Get('Kernel::System::Log')->Log(
-            Priority => 'error',
-            Message  => " POST DATA ".Dumper($post->result->body),
         );
 
         # check if the soap result is there

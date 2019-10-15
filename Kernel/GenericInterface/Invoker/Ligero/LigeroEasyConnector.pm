@@ -230,6 +230,14 @@ sub PrepareRequest {
     if($Param{Data}->{PreResult} && $Param{Data}->{PreResult}->{Data}){
         $ReturnData{PreResult} = $Param{Data}->{PreResult}->{Data};
     }
+
+    if($Param{Data}->{FilePath}){
+        $ReturnData{FilePath} = $Param{Data}->{FilePath};
+    }
+
+    if($Param{Data}->{FileData}){
+        $ReturnData{FileData} = $Param{Data}->{FileData};
+    }
     
     my $EncodeObject = $Kernel::OM->Get("Kernel::System::Encode");
 
