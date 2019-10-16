@@ -97,6 +97,7 @@ sub Run {
             StripPlainBodyAsAttachment => 3,
         );
 
+        FILE_UPLOAD:
         for my $FileID ( sort keys %Index ) {
 
             my %Attachment = $TicketObject->ArticleAttachment(
@@ -104,6 +105,10 @@ sub Run {
                 FileID    => $FileID,   # as returned by ArticleAttachmentIndex
                 UserID    => 1,
             );
+
+            if ($Param{New}->{'WebServiceAttachmentMaxSize'} && $Index{$FileID}->{FilesizeRaw} > $Param{New}->{'WebServiceAttachmentMaxSize'}) {
+                next FILE_UPLOAD;
+            }
 
             my $dir = "/opt/otrs/var/tmp/";
 
