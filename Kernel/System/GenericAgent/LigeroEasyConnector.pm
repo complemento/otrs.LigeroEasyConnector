@@ -47,12 +47,12 @@ sub Run {
     my $ArticleID;
     my %Article;
     for my $FileID ( @ArticleIndex ) {
-        if($FileID->{SenderType} ne 'system'){
+        if($FileID->{SenderType} ne 'system' && !$ArticleID){
             $ArticleID = $FileID->{ArticleID};
             %Article = $FileID;
         }
     }
-
+    
     my %Data = (
         'TicketID' => $Param{TicketID},
         'ArticleID' => $ArticleID
@@ -106,7 +106,7 @@ sub Run {
                 UserID    => 1,
             );
 
-            if ($Param{New}->{'WebServiceAttachmentMaxSize'} && $Index{$FileID}->{FilesizeRaw} > $Param{New}->{'WebServiceAttachmentMaxSize'}) {
+            if ($Param{New}->{'WebServiceAttachmentMaxSize'} && int($Index{$FileID}->{FilesizeRaw}) > int($Param{New}->{'WebServiceAttachmentMaxSize'})) {
                 next FILE_UPLOAD;
             }
 
