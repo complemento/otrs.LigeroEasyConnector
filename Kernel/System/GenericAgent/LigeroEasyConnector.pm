@@ -46,11 +46,44 @@ sub Run {
 
     my $ArticleID;
     my %Article;
+    my $ArticleData;
     for my $FileID ( @ArticleIndex ) {
         if($FileID->{SenderType} ne 'system' && !$ArticleID){
             $ArticleID = $FileID->{ArticleID};
             %Article = $FileID;
+            $ArticleData = $FileID;
         }
+    }
+
+    my $JSONObject = $Kernel::OM->Get('Kernel::System::JSON');
+    my $WebServiceConfig;
+    if($Param{New}->{'WebServiceConfig'}){
+        $WebServiceConfig = $JSONObject->Decode(
+            Data => $Param{New}->{'WebServiceConfig'},
+        );
+    } else {
+        return 1;
+    }
+
+    my $WebServiceAditionalParams;
+    if($Param{New}->{'WebServiceAditionalParams'}){
+        $WebServiceAditionalParams = $JSONObject->Decode(
+            Data => $Param{New}->{'WebServiceAditionalParams'},
+        );
+    }
+
+    my $AditionalFilters;
+    if($Param{New}->{'AditionalFilters'}){
+        $AditionalFilters = $JSONObject->Decode(
+            Data => $Param{New}->{'AditionalFilters'},
+        );
+    }
+
+    # Verifies if it has ArticleType Filter
+    if($AditionalFilters->{ArticleTypeFilter} && !$ArticleData->{ArticleType}){
+        return 1;
+    } elsif ($AditionalFilters->{ArticleTypeFilter} && !grep /^$ArticleData->{ArticleType}$/,split(/\|/,$AditionalFilters->{ArticleTypeFilter})) {
+        return 1;
     }
     
     my %Data = (
@@ -59,15 +92,15 @@ sub Run {
     );
 
     my $WebService = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
-        Name => $Param{New}->{'WebServiceName'},
+        Name => $WebServiceConfig->{'WebServiceName'},
     );
 
     # check needed param
-    if ($Param{New}->{'PreWebServiceInvoker'}) {
+    if ($WebServiceConfig->{'PreWebServiceInvoker'}) {
 
         my $Result = $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
             WebserviceID => $WebService->{ID},
-            Invoker      => $Param{New}->{'PreWebServiceInvoker'},
+            Invoker      => $WebServiceConfig->{'PreWebServiceInvoker'},
             Data         => \%Data
         );
 
@@ -75,12 +108,12 @@ sub Run {
     }
 
     # check needed param
-    if ($Param{New}->{'WebServiceInvoker'}) {
+    if ($WebServiceConfig->{'WebServiceInvoker'}) {
         
 
         my $Result = $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
             WebserviceID => $WebService->{ID},
-            Invoker      => $Param{New}->{'WebServiceInvoker'},
+            Invoker      => $WebServiceConfig->{'WebServiceInvoker'},
             Data         => \%Data
         );
 
@@ -88,7 +121,7 @@ sub Run {
     }
 
     # check needed param
-    if ($Param{New}->{'WebServiceAttachmentInvoker'}) {
+    if ($WebServiceAditionalParams->{'WebServiceAttachmentInvoker'}) {
         
         my %Index = $TicketObject->ArticleAttachmentIndex(
             ArticleID                  => $ArticleID,
@@ -106,7 +139,7 @@ sub Run {
                 UserID    => 1,
             );
 
-            if ($Param{New}->{'WebServiceAttachmentMaxSize'} && int($Index{$FileID}->{FilesizeRaw}) > int($Param{New}->{'WebServiceAttachmentMaxSize'})) {
+            if ($WebServiceAditionalParams->{'WebServiceAttachmentMaxSize'} && int($Index{$FileID}->{FilesizeRaw}) > int($WebServiceAditionalParams->{'WebServiceAttachmentMaxSize'})) {
                 next FILE_UPLOAD;
             }
 
@@ -133,18 +166,18 @@ sub Run {
 
             $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
                 WebserviceID => $WebService->{ID},
-                Invoker      => $Param{New}->{'WebServiceAttachmentInvoker'},
+                Invoker      => $WebServiceAditionalParams->{'WebServiceAttachmentInvoker'},
                 Data         => \%UploadData
             );
         }
         
     }
 
-    if ($Param{New}->{'PostWebServiceInvoker'}) {
+    if ($WebServiceConfig->{'PostWebServiceInvoker'}) {
 
         my $Result = $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
             WebserviceID => $WebService->{ID},
-            Invoker      => $Param{New}->{'PostWebServiceInvoker'},
+            Invoker      => $WebServiceConfig->{'PostWebServiceInvoker'},
             Data         => \%Data
         );
     }
