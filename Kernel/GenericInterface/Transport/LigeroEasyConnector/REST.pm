@@ -772,8 +772,17 @@ sub RequesterPerformRequest {
     # Add headers to request
     push @RequestParam, $Headers;
 
-    $RestClient->$RestCommand(@RequestParam);
+use Data::Dumper;
+$Kernel::OM->Get('Kernel::System::Log')->Log(
+    Priority => 'error',
+    Message  => "------------------ ".Dumper(@RequestParam),
+);
 
+    $RestClient->$RestCommand(@RequestParam);
+$Kernel::OM->Get('Kernel::System::Log')->Log(
+    Priority => 'error',
+    Message  => "------------------ ".Dumper($RestClient),
+);
     my $ResponseCode = $RestClient->responseCode();
     my $ResponseError;
     my $ErrorMessage = "Error while performing REST '$RestCommand' request to Controller '$Controller' on Host '"

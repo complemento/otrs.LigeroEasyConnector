@@ -113,7 +113,7 @@ sub PrepareRequest {
 				UserID => 1
 			);
         $Ticket{CustomerUser} = $Ticket{CustomerUserID};
-        delete $Ticket{$_} for grep /^((?!DynamicField_)).*ID$/, keys %Ticket;
+        # delete $Ticket{$_} for grep /^((?!DynamicField_)).*ID$/, keys %Ticket;
 	}	
 
 	### Get Article
