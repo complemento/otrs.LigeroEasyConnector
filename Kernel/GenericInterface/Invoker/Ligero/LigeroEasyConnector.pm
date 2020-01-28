@@ -107,13 +107,12 @@ sub PrepareRequest {
 	### Get Ticket Data
     if(IsStringWithData( $Param{Data}->{TicketID} )){
 		%Ticket = $Kernel::OM->Get('Kernel::System::Ticket')->TicketGet(
-				TicketID => $Param{Data}->{TicketID}, 
+				TicketID => $Param{Data}->{TicketID},
 				DynamicFields => 1,
 				Extended => 1,
 				UserID => 1
 			);
         $Ticket{CustomerUser} = $Ticket{CustomerUserID};
-        # delete $Ticket{$_} for grep /^((?!DynamicField_)).*ID$/, keys %Ticket;
 	}	
 
 	### Get Article
