@@ -115,6 +115,15 @@
             </Hash>
         </Value>
     </Setting>
+    <Setting Name="GenericInterface::Mapping::Module###XSLTLigero" Required="0" Valid="1">
+        <Description Translatable="1">GenericInterface module registration for the mapping layer.</Description>
+        <Navigation>GenericInterface::Mapping::ModuleRegistration</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="ConfigDialog">AdminGenericInterfaceMappingXSLT</Item>
+            </Hash>
+        </Value>
+    </Setting>
     <Setting Name="OTRSIntegration::UserLogin" Required="1" Valid="1">
         <Description Translatable="1">Agent conection user</Description>
         <Navigation>Configuration</Navigation>

@@ -337,13 +337,20 @@ sub Run {
     if ( !$Param{Data}->{TicketID} && !$Param{Data}->{TicketNumber} ) {
         # Try to seek for an already create ticket for this issue or subject
         my @TicketIDs;
+        my %Search;
+        if($Param{Data}->{"ControlSearch"}){
+            %Search = %{$Param{Data}->{"ControlSearch"}};
+        }
         if($Param{Data}->{"ControlDynamicField"} && $Param{Data}->{"ControlDynamicFieldValue"}){
+            $Search{"DynamicField_".$Param{Data}->{"ControlDynamicField"}} => {
+                    Equals => $Param{Data}->{"ControlDynamicFieldValue"}
+            };
+        }
+        if(scalar keys %Search){
             @TicketIDs = $TicketObject->TicketSearch(
                 UserID => 1,
                 Result => 'ARRAY',
-                "DynamicField_".$Param{Data}->{"ControlDynamicField"} => {
-                    Equals => $Param{Data}->{"ControlDynamicFieldValue"}
-                }
+                %Search
             );
         }
         if (@TicketIDs){
