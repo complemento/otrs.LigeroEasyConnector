@@ -179,8 +179,6 @@ sub Map {
         );
     }
 
-    my $XMLAnalisys = XML::Simple::XMLin($StyleDoc, ForceArray => 0);
-
     # LigeroSmart get articles and its dynamifields
     if( $StyleDoc =~/\<\!--\:\:LigeroSmartIncludeAllArticles\:\:--\>/ &&
         $Param{Data}->{Ticket} &&

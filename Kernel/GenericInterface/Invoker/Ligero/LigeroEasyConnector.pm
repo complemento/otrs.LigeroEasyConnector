@@ -203,19 +203,7 @@ sub PrepareRequest {
 	delete $CustomerUser{UserGoogleAuthenticatorSecretKey};
 	delete $CustomerUser{$_} for grep /^CustomerCompany/, keys %CustomerUser;
 
-     #Certificar utf8
-    #for my $Obj (qw (Ticket Article Service SLA CustomerCompany CustomerUser)){
-		
-	#}
-	#for (keys %Ticket){
-        #$Ticket{$_} = encode_utf8($Ticket{$_});
-    #}
-    #for (keys %Article){
-        #$Article{$_} = encode_utf8($Article{$_});
-    #}
-        
     # Verificar se este ticket é integrado (se ele possui o campo dinamico )
-    #%ReturnData = %Ticket;
     $ReturnData{Ticket} 			= \%Ticket if %Ticket;
     $ReturnData{Article} 			= \%Article if %Article;
     $ReturnData{Attachment} 		= \@Ats if @Ats;
@@ -223,12 +211,22 @@ sub PrepareRequest {
     $ReturnData{CustomerUser} 		= \%CustomerUser if %CustomerUser;
     #$ReturnData{Service} 			= \%Service if %Service;
     #$ReturnData{SLA} 				= \%SLA if %SLA;
-    #$ReturnData 			= %Ticket if %Ticket;
+
+    if($Param{Data}->{PreResult} && $Param{Data}->{PreResult}->{Data}){
+        $ReturnData{PreResult} = $Param{Data}->{PreResult}->{Data};
+    }
+
+    if($Param{Data}->{FilePath}){
+        $ReturnData{FilePath} = $Param{Data}->{FilePath};
+    }
+
+    if($Param{Data}->{FileData}){
+        $ReturnData{FileData} = $Param{Data}->{FileData};
+    }
+    
     my $EncodeObject = $Kernel::OM->Get("Kernel::System::Encode");
 
     $EncodeObject->EncodeInput( \%ReturnData );
-
-    #$Kernel::OM->Get('Kernel::System::Log')->Log( Priority => 'error', Message => "aaaaaaaaaaaa ".Dumper(\%ReturnData));
         
     return {
         Success => 1,

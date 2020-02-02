@@ -12,7 +12,7 @@ package Kernel::GenericInterface::Operation::Ligero::LigeroEasyConnector;
 
 use strict;
 use warnings;
-
+use Data::Dumper;
 use Kernel::System::VariableCheck qw( :all );
 
 use parent qw(
@@ -80,8 +80,18 @@ if applicable the created ArticleID.
             Password  => 'some password',                                       # if UserLogin or customerUserLogin is sent then
                                                                                 #   Password is required
 
-            TicketID     => 123,                                                # TicketID or TicketNumber is required
-            TicketNumber => '2004040510440485',
+            TicketID     => 123,                                                # If you want to update a Ticket
+            TicketNumber => '2004040510440485',                                 # TicketID, TicketNumber
+            ControlSearch => {                                                  # Or Control Search is required
+                DynamicField_XYZ => {                                           # If system find a ticket that matches
+                    Equals => MyExternalField                                   # the search, it will update it instead
+                }                                                               # of creating a new one
+                States => [new, open]
+            },
+            IgnoreOnUpdate => [                                                 # You can define attributes
+                'Ticket::Queue',                                                # which will be ignored
+                'Ticket::State'                                                 # if a ticket already exist
+            ],
 
             Ticket {                                                            # optional
                 Title      => 'some ticket title',
@@ -342,15 +352,16 @@ sub Run {
             %Search = %{$Param{Data}->{"ControlSearch"}};
         }
         if($Param{Data}->{"ControlDynamicField"} && $Param{Data}->{"ControlDynamicFieldValue"}){
-            $Search{"DynamicField_".$Param{Data}->{"ControlDynamicField"}} => {
-                    Equals => $Param{Data}->{"ControlDynamicFieldValue"}
-            };
+            $Search{"DynamicField_".$Param{Data}->{"ControlDynamicField"}}
+                ->{"Equals"} = $Param{Data}->{"ControlDynamicFieldValue"};
         }
         if(scalar keys %Search){
             @TicketIDs = $TicketObject->TicketSearch(
                 UserID => 1,
                 Result => 'ARRAY',
-                %Search
+                %Search,
+                SortBy  =>['Age'],
+                OrderBy => ['Down']
             );
         }
         if (@TicketIDs){
@@ -358,10 +369,23 @@ sub Run {
         } else {
             $Action = 'Create';
         }
-        #return $Self->ReturnError(
-            #ErrorCode    => 'TicketUpdateOrCreate.MissingParameter',
-            #ErrorMessage => "TicketUpdateOrCreate: TicketID or TicketNumber is required!",
-        #);
+    }
+
+    # Delete unwanted attributes on Update
+    if($Action eq 'Update' && (IsArrayRefWithData($Param{Data}->{IgnoreOnUpdate}) || IsStringWithData($Param{Data}->{IgnoreOnUpdate}))){
+        my @NodesToRemove;
+        if(IsStringWithData($Param{Data}->{IgnoreOnUpdate})){
+            push @NodesToRemove, $Param{Data}->{IgnoreOnUpdate};
+        } else {
+            @NodesToRemove = @{$Param{Data}->{IgnoreOnUpdate}};
+        }
+        for my $Attribute(@NodesToRemove){
+            my @RemainingPath = split('::',$Attribute);
+            $Self->_FindAndDeleteNode(
+                RemainingPath => \@RemainingPath,
+                Hash => $Param{Data},
+                );
+        }
     }
 
     if (
@@ -2990,6 +3014,30 @@ sub _TicketCreate {
         },
     };
 }
+
+# This function is used for removing nodes
+# by the IgnoreOnUpdate attribute.
+# _FindAndDeleteNode(
+#    Hash => $SomeHashReference, RemainingPath => qw(Ticket Queue)
+#)
+sub _FindAndDeleteNode {
+    my ( $Self, %Param ) = @_;
+
+    my $Ref = $Param{Hash};
+    my @RemainingPath;
+    if(IsArrayRefWithData($Param{RemainingPath})){
+        @RemainingPath = @{$Param{RemainingPath}};
+    } else {
+        push @RemainingPath, $Param{RemainingPath};
+    }
+    my $Key = $RemainingPath[0];
+    shift @RemainingPath;
+    return undef unless ref $Ref;
+    return undef unless defined $Ref->{$Key};
+    return delete $Ref->{$Key} unless scalar @RemainingPath;
+    return $Self->_FindAndDeleteNode(Hash => $Ref->{$Key}, RemainingPath => @RemainingPath);
+}
+
 1;
 
 =end Internal:
