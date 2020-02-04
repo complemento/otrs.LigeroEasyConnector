@@ -197,6 +197,10 @@ sub Run {
 
     my $FunctionResult = $InvokerObject->PrepareRequest(
         Data => $Param{Data},
+        # Complemento
+        WebserviceID => $WebserviceID,
+        Invoker => $Param{Invoker},
+        # EO Complemento
     );
 
     if ( !$FunctionResult->{Success} ) {
@@ -222,7 +226,7 @@ sub Run {
         };
     }
 
-    # Extend the data include payload/
+    # Extend the data$FunctionResult include payload/
     $DataInclude{RequesterRequestPrepareOutput} = $FunctionResult->{Data};
 
     #
@@ -439,6 +443,8 @@ sub Run {
         Data            => $DataIn,
         # COMPLEMENTO: INCLUDE ORIGINAL INFORMATION SUCH AS TICKET ID
         DataInclude => \%DataInclude,
+        WebserviceID => $WebserviceID,
+        Invoker => $Param{Invoker},
         # EO COMPLEMENTO
     );
 

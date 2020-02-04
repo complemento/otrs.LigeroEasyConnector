@@ -79,12 +79,39 @@ prepare the invocation of the configured remote webservice.
 sub PrepareRequest {
     my ( $Self, %Param ) = @_;
 
-    # Caso seja necessario filtrar por webservice ID
-    #my %DebuggerInfo = %{$Self->{DebuggerObject}};
-    
     my %ReturnData;
+
+    # Call Pre Invoker
+    my $WebserviceData = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
+        ID => $Param{WebserviceID},
+    );
+    if ( IsHashRefWithData($WebserviceData) 
+            && $WebserviceData->{Config}->{Requester}
+            && $WebserviceData->{Config}->{Requester}->{Invoker}
+            && IsHashRefWithData($WebserviceData->{Config}->{Requester}->{Invoker})
+            && IsHashRefWithData($WebserviceData->{Config}->{Requester}->{Invoker}->{$Param{Invoker}})
+            && IsStringWithData($WebserviceData->{Config}->{Requester}->{Invoker}->{$Param{Invoker}}->{PreInvoker})
+        )
+    {
+        my ($PreInvokerWS, $PreInvoker) = split '::',$WebserviceData->{Config}->{Requester}->{Invoker}->{$Param{Invoker}}->{PreInvoker};
+        my $PreInvokerWSData = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
+            Name => $PreInvokerWS,
+        );
+        my $PreResult = $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
+            WebserviceID => $PreInvokerWSData->{ID},
+            Invoker      => $PreInvoker,
+            Data         => $Param{Data}
+        );
+        $Self->{DebuggerObject}->Debug(
+            Summary => "Result from Pre Invoker",
+            Data    => $PreResult,
+        );
+        $ReturnData{PreResult} = $PreResult;
+    }
     
-    $ReturnData{OldTicketData} = $Param{Data}->{OldTicketData};
+    if(IsHashRefWithData($Param{Data}->{OldTicketData})){
+        $ReturnData{OldTicketData} = $Param{Data}->{OldTicketData};
+    }
     
     # check Action
     if ( IsStringWithData( $Param{Data}->{Action} ) ) {
@@ -358,12 +385,15 @@ sub HandleResponse {
         }
     }
 
-
     # prepare Return
     my %ReturnData;
 
+    if($Param{Data}->{ReturnData}){
+        %ReturnData = %{$Param{Data}->{ReturnData}};
+    };
+
     if($TicketID && (IsHashRefWithData($Ticket) || IsArrayRefWithData(\@DynamicFieldList))){
-        return $Self->_TicketUpdate(
+        $ReturnData{TicketUpdateStatus} = $Self->_TicketUpdate(
                 TicketID         => $TicketID,
                 Ticket           => $Ticket,
                 # Article          => $Article,
@@ -374,16 +404,34 @@ sub HandleResponse {
         );
     }
 
-    # check Action
-    # if ( IsStringWithData( $Param{Data}->{Action} ) ) {
-    #     if ( $Param{Data}->{Action} !~ m{ \A ( .*? ) Test \z }xms ) {
+    # Call Post Invoker
+    my $WebserviceData = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
+        ID => $Param{WebserviceID},
+    );
+    if ( IsHashRefWithData($WebserviceData) 
+            && $WebserviceData->{Config}->{Requester}
+            && $WebserviceData->{Config}->{Requester}->{Invoker}
+            && IsHashRefWithData($WebserviceData->{Config}->{Requester}->{Invoker})
+            && IsHashRefWithData($WebserviceData->{Config}->{Requester}->{Invoker}->{$Param{Invoker}})
+            && IsStringWithData($WebserviceData->{Config}->{Requester}->{Invoker}->{$Param{Invoker}}->{PostInvoker})
+        )
+    {
+        my ($PostInvokerWS, $PostInvoker) = split '::',$WebserviceData->{Config}->{Requester}->{Invoker}->{$Param{Invoker}}->{PostInvoker};
+        my $PostInvokerWSData = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
+            Name => $PostInvokerWS,
+        );
 
-    #         return $Self->{DebuggerObject}->Error(
-    #             Summary => 'Got Action but it is not in required format!',
-    #         );
-    #     }
-    #     $ReturnData{Action} = $1;
-    # }
+        my $PostResult = $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
+            WebserviceID => $PostInvokerWSData->{ID},
+            Invoker      => $PostInvoker,
+            Data         => \%ReturnData
+        );
+        $Self->{DebuggerObject}->Debug(
+            Summary => "Result from Post Invoker",
+            Data    => $PostResult,
+        );
+        $ReturnData{PostResult} = $PostResult;
+    }
 
     return {
         Success => 1,

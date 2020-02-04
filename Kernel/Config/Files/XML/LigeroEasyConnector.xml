@@ -69,7 +69,7 @@
             <Hash>
                 <Item Key="Name">LigeroEasyConnector</Item>
                 <Item Key="Controller">Ligero</Item>
-                <Item Key="ConfigDialog">AdminGenericInterfaceInvokerDefault</Item>
+                <Item Key="ConfigDialog">AdminGenericInterfaceInvokerLigero</Item>
             </Hash>
         </Value>
     </Setting>
@@ -121,6 +121,46 @@
         <Value>
             <Hash>
                 <Item Key="ConfigDialog">AdminGenericInterfaceMappingXSLT</Item>
+            </Hash>
+        </Value>
+    </Setting>
+    <Setting Name="Frontend::Module###AdminGenericInterfaceInvokerLigero" Required="0" Valid="1">
+        <Description Translatable="1">Frontend module registration for the agent interface.</Description>
+        <Navigation>Frontend::Admin::ModuleRegistration</Navigation>
+        <Value>
+            <Item ValueType="FrontendRegistration">
+                <Hash>
+                    <Item Key="GroupRo">
+                        <Array>
+                        </Array>
+                    </Item>
+                    <Item Key="Group">
+                        <Array>
+                            <Item>admin</Item>
+                        </Array>
+                    </Item>
+                    <Item Key="Description">Admin</Item>
+                    <Item Key="Title" Translatable="1">GenericInterface Invoker GUI</Item>
+                    <Item Key="NavBarName"></Item>
+                </Hash>
+            </Item>
+        </Value>
+    </Setting>
+    <Setting Name="Loader::Module::AdminGenericInterfaceInvokerLigero###003-GenericInterface" Required="0" Valid="1">
+        <Description Translatable="1">Loader module registration for the agent interface.</Description>
+        <Navigation>Frontend::Admin::ModuleRegistration::Loader</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="CSS">
+                    <Array>
+                        <Item>Core.Agent.Admin.GenericInterface.css</Item>
+                    </Array>
+                </Item>
+                <Item Key="JavaScript">
+                    <Array>
+                        <Item>Core.Agent.Admin.GenericInterfaceInvoker.js</Item>
+                    </Array>
+                </Item>
             </Hash>
         </Value>
     </Setting>
