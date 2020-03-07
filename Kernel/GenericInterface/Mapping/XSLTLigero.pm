@@ -13,6 +13,7 @@ use strict;
 use warnings;
 
 use Data::Dumper;
+use MIME::Base64;
 
 use Kernel::System::VariableCheck qw(:all);
 use Storable;
@@ -180,7 +181,7 @@ sub Map {
     }
 
     # LigeroSmart get articles and its dynamifields
-    if( $StyleDoc =~/\<\!--\:\:LigeroSmartIncludeAllArticles\:\:--\>/ &&
+    if( $StyleDoc =~/\<\!--\:\:LigeroSmartIncludeAllArticles[\(]*[^\)]*[\)]*\:\:--\>/ &&
         $Param{Data}->{Ticket} &&
         $Param{Data}->{Ticket}->{TicketID}
         )
@@ -194,6 +195,20 @@ sub Map {
         my $Attachments = 1;
         my %ExcludeAttachments;
         my $GetAttachmentContents = 0;
+        my $IgnoreBodyAttachment = 0;
+
+        # Controla a parametrização
+        if ($StyleDoc =~ m/\<\!--\:\:LigeroSmartIncludeAllArticles\(([^\)]+)\)\:\:--\>/) {
+
+            my $functionInput = $1;
+
+            # Incluir conteúdo dos artigos
+            $GetAttachmentContents = 1 if ($functionInput =~ m/\+content/g);
+
+            # Exclui anexo referente ao corpo do artigo
+            $IgnoreBodyAttachment = 1 if ($functionInput =~ m/\-bodyattachment/g);
+
+        }
 
         @Articles = $ArticleObject->ArticleList(
             TicketID => $TicketID,
@@ -233,6 +248,7 @@ sub Map {
                 );
 
                 next ATTACHMENT if !IsHashRefWithData( \%Attachment );
+                next ATTACHMENT if ($IgnoreBodyAttachment && $Attachment{Filename} eq "file-2");
 
                 $Attachment{FileID} = $FileID;
                 if ($GetAttachmentContents)
@@ -254,7 +270,49 @@ sub Map {
         }    # finish article loop
     
         $Param{Data}->{Articles} = \@Articles;
+
+        $Self->{DebuggerObject}->Debug(
+            Summary => "Data with articles added",
+            Data    => $Param{Data},
+        );
+
     }
+
+    # LigeroSmart get articles and its dynamifields
+    if( $StyleDoc =~/\<\!--\:\:LigeroSmartIncludeAllLinks[\(]*[^\)]*[\)]*\:\:--\>/ &&
+        $Param{Data}->{Ticket} &&
+        $Param{Data}->{Ticket}->{TicketID}
+        )
+    {
+        my $TicketID = $Param{Data}->{Ticket}->{TicketID};
+        my $LinkObject = $Kernel::OM->Get('Kernel::System::LinkObject');
+
+        my $LinkList = $LinkObject->LinkList(
+            Object => 'Ticket',
+            Key    => $TicketID,
+            State  => 'Valid',
+            UserID => 1
+        );
+
+        my $LinksReturned;
+        foreach my $type (keys %{ $LinkList }) {
+            foreach my $linkType (keys %{$LinkList->{$type}}) {
+                foreach my $linkRelation (keys %{$LinkList->{$type}->{$linkType}}) {
+                    foreach my $linkId (keys %{$LinkList->{$type}->{$linkType}->{$linkRelation}}) {
+                        push @{ $LinksReturned->{$type}->{$linkType}->{$linkRelation} }, $linkId;
+                    }
+                }
+            }
+        }
+
+        $Param{Data}->{Links} = $LinksReturned;
+        $Self->{DebuggerObject}->Debug(
+            Summary => "Data with links added",
+            Data    => $LinksReturned,
+        );
+
+    }
+
 
 
     eval {

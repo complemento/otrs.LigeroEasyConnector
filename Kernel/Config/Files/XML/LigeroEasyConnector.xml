@@ -62,7 +62,7 @@
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="GenericInterface::Invoker::Module###Ligero::LigeroEasyConnector" Required="0" Valid="1">a
+    <Setting Name="GenericInterface::Invoker::Module###Ligero::LigeroEasyConnector" Required="0" Valid="1">
         <Description Translatable="1">Send Ticket and Article to other System.</Description>
         <Navigation>GenericInterface::Invoker::ModuleRegistration</Navigation>
         <Value>
@@ -73,6 +73,18 @@
             </Hash>
         </Value>
     </Setting>
+    <Setting Name="GenericInterface::Invoker::Module###Ligero::TFSConnector" Required="0" Valid="1">
+        <Description Translatable="1">Send Ticket and Article to other System.</Description>
+        <Navigation>GenericInterface::Invoker::ModuleRegistration</Navigation>
+        <Value>
+            <Hash>
+                <Item Key="Name">TFSConnector</Item>
+                <Item Key="Controller">Ligero</Item>
+                <Item Key="ConfigDialog">AdminGenericInterfaceInvokerLigero</Item>
+            </Hash>
+        </Value>
+    </Setting>
+
     <Setting Name="GenericInterface::Invoker::Module###Ligero::ArticleSend" Required="0" Valid="1">
         <Description Translatable="1">Send Article to Other OTRS System.</Description>
         <Navigation>GenericInterface::Invoker::ModuleRegistration</Navigation>
