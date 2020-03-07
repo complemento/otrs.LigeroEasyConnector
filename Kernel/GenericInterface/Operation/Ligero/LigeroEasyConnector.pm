@@ -18,6 +18,7 @@ use Kernel::System::VariableCheck qw( :all );
 use parent qw(
     Kernel::GenericInterface::Operation::Common
     Kernel::GenericInterface::Operation::Ticket::Common
+    Kernel::GenericInterface::LigeroEasyConnectorCommon
 );
 
 our $ObjectManagerDisabled = 1;

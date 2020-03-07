@@ -2,16 +2,15 @@ package Kernel::GenericInterface::Invoker::Ligero::TFSConnector;
 
 use strict;
 use warnings;
-
 use Data::Dumper;
-
 use utf8;
 use Encode qw( encode_utf8 );
-
 use MIME::Base64 qw(encode_base64 decode_base64);
-
 use Kernel::System::VariableCheck qw(IsString IsStringWithData IsHashRefWithData IsArrayRefWithData);
 
+use parent qw(
+    Kernel::GenericInterface::LigeroEasyConnectorCommon
+);
 # prevent 'Used once' warning for Kernel::OM
 use Kernel::System::ObjectManager;
 
@@ -410,50 +409,9 @@ sub HandleResponse {
         );
     }
 
-    # LigeroEasyConnectorCall
-    my @InvokerList;
-    if ( defined $Param{Data}->{LigeroEasyConnectorCall} ) {
-
-        # isolate LigeroEasyConnectorCall parameter
-        my $LigeroEasyConnectorCall = $Param{Data}->{LigeroEasyConnectorCall};
-
-        # homogenate input to array
-        if ( ref $LigeroEasyConnectorCall eq 'HASH' ) {
-            push @InvokerList, $LigeroEasyConnectorCall;
-        }
-        else {
-            @InvokerList = @{$LigeroEasyConnectorCall};
-        }
-
-        # check InvokerList internal structure
-        for my $InvokerItem (@InvokerList) {
-            if ( !IsHashRefWithData($InvokerItem) ) {
-                return {
-                    ErrorCode => 'LigeroEasyConnectorCall.InvalidParameter',
-                    ErrorMessage =>
-                        "LigeroEasyConnectorCall: parameter is invalid!",
-                };
-            }
-        }
-    }
-    foreach my $Invoker (@InvokerList) {
-        $Self->{DebuggerObject}->Debug(
-            Summary => "Data used to call $Invoker->{WebserviceName} - $Invoker->{Invoker}",
-            Data    => $Invoker,
-        );
-        my $WSData = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
-             Name => $Invoker->{WebserviceName}
-        );
-        my $Result = $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
-            WebserviceID => $WSData->{ID},
-            Invoker      => $Invoker->{Invoker},
-            Data         => { InvokerData => $Invoker }
-        );
-        $Self->{DebuggerObject}->Debug(
-            Summary => "Result from $Invoker->{WebserviceName} - $Invoker->{Invoker}",
-            Data    => $Result
-        );
-    }
+    $Self->_LigeroEasyConnectorCall(
+        Data => $Param{Data}
+    )
 
     # Call Post Invoker
     my $WebserviceData = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
@@ -863,50 +821,6 @@ sub _TicketUpdate {
         }
     }
 
-    # # update Ticket->CustomerUser && Ticket->CustomerID
-    # if ( $Ticket->{CustomerUser} || $Ticket->{CustomerID} ) {
-
-    #     # set values to empty if they are not defined
-    #     $TicketData{CustomerUserID} = $TicketData{CustomerUserID} || '';
-    #     $TicketData{CustomerID}     = $TicketData{CustomerID}     || '';
-    #     $Ticket->{CustomerUser}     = $Ticket->{CustomerUser}     || '';
-    #     $Ticket->{CustomerID}       = $Ticket->{CustomerID}       || '';
-
-    #     my $Success;
-    #     if (
-    #         $Ticket->{CustomerUser} ne $TicketData{CustomerUserID}
-    #         || $Ticket->{CustomerID} ne $TicketData{CustomerID}
-    #         )
-    #     {
-    #         my $CustomerID = $CustomerUserData{UserCustomerID} || '';
-
-    #         # use user defined CustomerID if defined
-    #         if ( defined $Ticket->{CustomerID} && $Ticket->{CustomerID} ne '' ) {
-    #             $CustomerID = $Ticket->{CustomerID};
-    #         }
-
-    #         $Success = $TicketObject->TicketCustomerSet(
-    #             No       => $CustomerID,
-    #             User     => $Ticket->{CustomerUser},
-    #             TicketID => $TicketID,
-    #             UserID   => $Param{UserID},
-    #         );
-    #     }
-    #     else {
-
-    #         # data is the same as in ticket nothing to do
-    #         $Success = 1;
-    #     }
-
-    #     if ( !$Success ) {
-    #         return {
-    #             Success => 0,
-    #             Errormessage =>
-    #                 'Ticket customer user could not be updated, please contact system administrator!',
-    #             }
-    #     }
-    # }
-
     # update Ticket->Priority
     if ( $Ticket->{Priority} || $Ticket->{PriorityID} ) {
         my $Success;
@@ -1016,88 +930,6 @@ sub _TicketUpdate {
                 }
         }
     }
-    
-    # @TODO - ADAPT TO OTRS 6 ARTICLE CREATION
-    # my $ArticleID;
-    # if ( IsHashRefWithData($Article) ) {
-
-    #     # set Article From
-    #     my $From;
-    #     if ( $Article->{From} ) {
-    #         $From = $Article->{From};
-    #     }
-    #     elsif ( $Param{UserType} eq 'Customer' ) {
-
-    #         # use data from customer user (if customer user is in database)
-    #         if ( IsHashRefWithData( \%CustomerUserData ) ) {
-    #             $From = '"'
-    #                 . $CustomerUserData{UserFirstname} . ' '
-    #                 . $CustomerUserData{UserLastname} . '"'
-    #                 . ' <' . $CustomerUserData{UserEmail} . '>';
-    #         }
-
-    #         # otherwise use customer user as sent from the request (it should be an email)
-    #         else {
-    #             $From = $Ticket->{CustomerUser};
-    #         }
-    #     }
-    #     else {
-    #         my %UserData = $Kernel::OM->Get('Kernel::System::User')->GetUserData(
-    #             UserID => $Param{UserID},
-    #         );
-    #         $From = $UserData{UserFirstname} . ' ' . $UserData{UserLastname};
-    #     }
-
-    #     # set Article To
-    #     my $To = '';
-
-    #     # create article
-    #     $ArticleID = $TicketObject->ArticleCreate(
-    #         NoAgentNotify  => $Article->{NoAgentNotify}  || 0,
-    #         TicketID       => $TicketID,
-    #         ArticleTypeID  => $Article->{ArticleTypeID}  || '',
-    #         ArticleType    => $Article->{ArticleType}    || '',
-    #         SenderTypeID   => $Article->{SenderTypeID}   || '',
-    #         SenderType     => $Article->{SenderType}     || '',
-    #         From           => $From,
-    #         To             => $To,
-    #         Subject        => $Article->{Subject},
-    #         Body           => $Article->{Body},
-    #         MimeType       => $Article->{MimeType}       || '',
-    #         Charset        => $Article->{Charset}        || '',
-    #         ContentType    => $Article->{ContentType}    || '',
-    #         UserID         => $Param{UserID},
-    #         HistoryType    => $Article->{HistoryType},
-    #         HistoryComment => $Article->{HistoryComment} || '%%',
-    #         AutoResponseType => $Article->{AutoResponseType},
-    #         UnlockOnAway     => $UnlockOnAway,
-    #         OrigHeader       => {
-    #             From    => $From,
-    #             To      => $To,
-    #             Subject => $Article->{Subject},
-    #             Body    => $Article->{Body},
-
-    #         },
-    #     );
-
-    #     if ( !$ArticleID ) {
-    #         return {
-    #             Success => 0,
-    #             ErrorMessage =>
-    #                 'Article could not be created, please contact the system administrator'
-    #             }
-    #     }
-
-    #     # time accounting
-    #     if ( $Article->{TimeUnit} ) {
-    #         $TicketObject->TicketAccountTime(
-    #             TicketID  => $TicketID,
-    #             ArticleID => $ArticleID,
-    #             TimeUnit  => $Article->{TimeUnit},
-    #             UserID    => $Param{UserID},
-    #         );
-    #     }
-    # }
 
     # set dynamic fields
     for my $DynamicField ( @{$DynamicFieldList} ) {
@@ -1121,37 +953,6 @@ sub _TicketUpdate {
         }
     }
 
-    # set attachments
-
-    # for my $Attachment ( @{$AttachmentList} ) {
-    #     my $Result = $Self->CreateAttachment(
-    #         Attachment => $Attachment,
-    #         ArticleID  => $ArticleID || '',
-    #         UserID     => $Param{UserID}
-    #     );
-
-    #     if ( !$Result->{Success} ) {
-    #         my $ErrorMessage =
-    #             $Result->{ErrorMessage} || "Attachment could not be created, please contact the "
-    #             . " system administrator";
-
-    #         return {
-    #             Success      => 0,
-    #             ErrorMessage => $ErrorMessage,
-    #         };
-    #     }
-    # }
-
-    # if ($ArticleID) {
-    #     return {
-    #         Success => 1,
-    #         Data    => {
-    #             TicketID     => $TicketID,
-    #             TicketNumber => $TicketData{TicketNumber},
-    #             ArticleID    => $ArticleID,
-    #         },
-    #     };
-    # }
     return {
         Success => 1,
         Data    => {
@@ -1253,6 +1054,56 @@ sub _SetDynamicFieldValue {
     return {
         Success => $Success,
     };
+}
+
+sub _LigeroEasyConnectorCall {
+    my ( $Self, %Param ) = @_;
+
+    # LigeroEasyConnectorCall
+    my @InvokerList;
+    if ( defined $Param{Data}->{LigeroEasyConnectorCall} ) {
+
+        # isolate LigeroEasyConnectorCall parameter
+        my $LigeroEasyConnectorCall = $Param{Data}->{LigeroEasyConnectorCall};
+
+        # homogenate input to array
+        if ( ref $LigeroEasyConnectorCall eq 'HASH' ) {
+            push @InvokerList, $LigeroEasyConnectorCall;
+        }
+        else {
+            @InvokerList = @{$LigeroEasyConnectorCall};
+        }
+
+        # check InvokerList internal structure
+        for my $InvokerItem (@InvokerList) {
+            if ( !IsHashRefWithData($InvokerItem) ) {
+                return {
+                    ErrorCode => 'LigeroEasyConnectorCall.InvalidParameter',
+                    ErrorMessage =>
+                        "LigeroEasyConnectorCall: parameter is invalid!",
+                };
+            }
+        }
+    }
+    foreach my $Invoker (@InvokerList) {
+        $Self->{DebuggerObject}->Debug(
+            Summary => "Data used to call $Invoker->{WebserviceName} - $Invoker->{Invoker}",
+            Data    => $Invoker,
+        );
+        my $WSData = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
+             Name => $Invoker->{WebserviceName}
+        );
+        my $Result = $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
+            WebserviceID => $WSData->{ID},
+            Invoker      => $Invoker->{Invoker},
+            Data         => { InvokerData => $Invoker }
+        );
+        $Self->{DebuggerObject}->Debug(
+            Summary => "Result from $Invoker->{WebserviceName} - $Invoker->{Invoker}",
+            Data    => $Result
+        );
+    }
+
 }
 
 1;
