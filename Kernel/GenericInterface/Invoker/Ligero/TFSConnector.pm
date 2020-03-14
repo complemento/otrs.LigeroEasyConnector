@@ -389,7 +389,6 @@ sub HandleResponse {
     }
 
 
-
     # prepare Return
     my %ReturnData;
 
@@ -409,9 +408,9 @@ sub HandleResponse {
         );
     }
 
-    $Self->_LigeroEasyConnectorCall(
-        Data => $Param{Data}
-    )
+    # $Self->_LigeroEasyConnectorCall(
+    #     Data => $Param{Data}
+    # );
 
     # Call Post Invoker
     my $WebserviceData = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
@@ -1054,56 +1053,6 @@ sub _SetDynamicFieldValue {
     return {
         Success => $Success,
     };
-}
-
-sub _LigeroEasyConnectorCall {
-    my ( $Self, %Param ) = @_;
-
-    # LigeroEasyConnectorCall
-    my @InvokerList;
-    if ( defined $Param{Data}->{LigeroEasyConnectorCall} ) {
-
-        # isolate LigeroEasyConnectorCall parameter
-        my $LigeroEasyConnectorCall = $Param{Data}->{LigeroEasyConnectorCall};
-
-        # homogenate input to array
-        if ( ref $LigeroEasyConnectorCall eq 'HASH' ) {
-            push @InvokerList, $LigeroEasyConnectorCall;
-        }
-        else {
-            @InvokerList = @{$LigeroEasyConnectorCall};
-        }
-
-        # check InvokerList internal structure
-        for my $InvokerItem (@InvokerList) {
-            if ( !IsHashRefWithData($InvokerItem) ) {
-                return {
-                    ErrorCode => 'LigeroEasyConnectorCall.InvalidParameter',
-                    ErrorMessage =>
-                        "LigeroEasyConnectorCall: parameter is invalid!",
-                };
-            }
-        }
-    }
-    foreach my $Invoker (@InvokerList) {
-        $Self->{DebuggerObject}->Debug(
-            Summary => "Data used to call $Invoker->{WebserviceName} - $Invoker->{Invoker}",
-            Data    => $Invoker,
-        );
-        my $WSData = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
-             Name => $Invoker->{WebserviceName}
-        );
-        my $Result = $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
-            WebserviceID => $WSData->{ID},
-            Invoker      => $Invoker->{Invoker},
-            Data         => { InvokerData => $Invoker }
-        );
-        $Self->{DebuggerObject}->Debug(
-            Summary => "Result from $Invoker->{WebserviceName} - $Invoker->{Invoker}",
-            Data    => $Result
-        );
-    }
-
 }
 
 1;

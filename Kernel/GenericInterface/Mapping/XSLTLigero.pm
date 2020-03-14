@@ -18,6 +18,10 @@ use MIME::Base64;
 use Kernel::System::VariableCheck qw(:all);
 use Storable;
 
+use parent qw(
+    Kernel::GenericInterface::LigeroEasyConnectorCommon
+);
+
 our $ObjectManagerDisabled = 1;
 
 =head1 NAME
@@ -284,8 +288,22 @@ sub Map {
         $Param{Data}->{Ticket}->{TicketID}
         )
     {
+        my $functionInput;
+        if ($StyleDoc =~ m/\<\!--\:\:LigeroSmartIncludeAllLinks\(([^\)]+)\)\:\:--\>/) {
+            $functionInput = $1;
+        }
+        
         my $TicketID = $Param{Data}->{Ticket}->{TicketID};
         my $LinkObject = $Kernel::OM->Get('Kernel::System::LinkObject');
+
+        my $TicketGet = 0;
+        my $DynamicFields = 0;
+
+        # Incluir Dados do Ticket
+        $TicketGet = 1 if ($functionInput =~ m/\+TicketGet/g);
+
+        # Incluir Campos Dinamicos
+        $DynamicFields = 1 if ($functionInput =~ m/\+DynamicFields/g);
 
         my $LinkList = $LinkObject->LinkList(
             Object => 'Ticket',
@@ -299,7 +317,27 @@ sub Map {
             foreach my $linkType (keys %{$LinkList->{$type}}) {
                 foreach my $linkRelation (keys %{$LinkList->{$type}->{$linkType}}) {
                     foreach my $linkId (keys %{$LinkList->{$type}->{$linkType}->{$linkRelation}}) {
-                        push @{ $LinksReturned->{$type}->{$linkType}->{$linkRelation} }, $linkId;
+                        if($type eq 'Ticket'){
+                            if($TicketGet && $DynamicFields){
+                                my %Ticket = $Kernel::OM->Get('Kernel::System::Ticket')->TicketGet(
+                                    TicketID => $linkId,
+                                    DynamicFields => 1
+                                );
+                                push @{ $LinksReturned->{$type}->{$linkType}->{$linkRelation} }, \%Ticket;
+                            }
+                            elsif($TicketGet && !$DynamicFields){
+                                my %Ticket = $Kernel::OM->Get('Kernel::System::Ticket')->TicketGet(
+                                    TicketID => $linkId,
+                                    DynamicFields => 0
+                                );
+                                push @{ $LinksReturned->{$type}->{$linkType}->{$linkRelation} }, \%Ticket;
+                            } else {
+                                push @{ $LinksReturned->{$type}->{$linkType}->{$linkRelation} }, $linkId;
+                            }
+                        } else {
+                            # Links other than Ticket, such as FAQ and CIs
+                            push @{ $LinksReturned->{$type}->{$linkType}->{$linkRelation} }, $linkId;
+                        }
                     }
                 }
             }
@@ -475,6 +513,10 @@ sub Map {
             Config => $Config->{PostRegExFilter},
         );
     }
+
+    $Self->_LigeroEasyConnectorCall(
+        Data => $ReturnData
+    );
 
     return {
         Success => 1,

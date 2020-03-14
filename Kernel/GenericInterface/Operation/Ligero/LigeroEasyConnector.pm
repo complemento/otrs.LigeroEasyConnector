@@ -2326,13 +2326,13 @@ sub _TicketUpdate {
         ID => $Self->{WebserviceID},
     );
 
-    my $IncludeTicketData;
+    my $IncludeTicketData = 1;
 
     # Get operation config, if operation name was supplied.
-    if ( $Self->{Operation} ) {
-        my $OperationConfig = $Webservice->{Config}->{Provider}->{Operation}->{ $Self->{Operation} };
-        $IncludeTicketData = $OperationConfig->{IncludeTicketData};
-    }
+    #if ( $Self->{Operation} ) {
+    #    my $OperationConfig = $Webservice->{Config}->{Provider}->{Operation}->{ $Self->{Operation} };
+    #    $IncludeTicketData = $OperationConfig->{IncludeTicketData};
+    #}
 
     if ( !$IncludeTicketData ) {
         if ($ArticleID) {
@@ -2466,6 +2466,19 @@ sub _TicketUpdate {
     }
 
     $TicketData{Article} = \%ArticleData;
+	
+    my %Service;
+    if($TicketData{ServiceID}){
+        %Service = $Kernel::OM->Get('Kernel::System::Service')->ServicePreferencesGet(
+            ServiceID => $TicketData{ServiceID},
+            UserID    => 1,
+        );
+        my %ServiceData = $Kernel::OM->Get('Kernel::System::Service')->ServiceGet(
+            ServiceID => $TicketData{ServiceID},
+            UserID    => 1,
+        );
+        %Service = (%Service, %ServiceData);
+    }
 
     # return ticket data and article data
     return {
@@ -2475,6 +2488,7 @@ sub _TicketUpdate {
             TicketNumber => $TicketData{TicketNumber},
             ArticleID    => $ArticleData{ArticleID},
             Ticket       => \%TicketData,
+            Service      => \%Service
         },
     };
 }
@@ -2907,13 +2921,13 @@ sub _TicketCreate {
         ID => $Self->{WebserviceID},
     );
 
-    my $IncludeTicketData;
+    my $IncludeTicketData = 1;
 
     # Get operation config, if operation name was supplied.
-    if ( $Self->{Operation} ) {
-        my $OperationConfig = $Webservice->{Config}->{Provider}->{Operation}->{ $Self->{Operation} };
-        $IncludeTicketData = $OperationConfig->{IncludeTicketData};
-    }
+    #if ( $Self->{Operation} ) {
+    #    my $OperationConfig = $Webservice->{Config}->{Provider}->{Operation}->{ $Self->{Operation} };
+    #    $IncludeTicketData = $OperationConfig->{IncludeTicketData};
+    #}
 
     if ( !$IncludeTicketData ) {
         return {
@@ -3005,6 +3019,19 @@ sub _TicketCreate {
 
     $TicketData{Article} = \%ArticleData;
 
+    my %Service;
+    if($TicketData{ServiceID}){
+        %Service = $Kernel::OM->Get('Kernel::System::Service')->ServicePreferencesGet(
+            ServiceID => $TicketData{ServiceID},
+            UserID    => 1,
+        );
+        my %ServiceData = $Kernel::OM->Get('Kernel::System::Service')->ServiceGet(
+            ServiceID => $TicketData{ServiceID},
+            UserID    => 1,
+        );
+        %Service = (%Service, %ServiceData);
+    }
+
     return {
         Success => 1,
         Data    => {
@@ -3012,6 +3039,7 @@ sub _TicketCreate {
             TicketNumber => $TicketData{TicketNumber},
             ArticleID    => $ArticleID,
             Ticket       => \%TicketData,
+            Service      => \%Service
         },
     };
 }

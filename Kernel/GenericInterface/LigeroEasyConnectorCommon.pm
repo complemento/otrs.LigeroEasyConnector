@@ -58,6 +58,7 @@ sub _LigeroEasyConnectorCall {
         my $Result = $Kernel::OM->Get('Kernel::GenericInterface::Requester')->Run(
             WebserviceID => $WSData->{ID},
             Invoker      => $Invoker->{Invoker},
+            # Data         => $Invoker->{Data}
             Data         => { InvokerData => $Invoker }
         );
         $Self->{DebuggerObject}->Debug(
