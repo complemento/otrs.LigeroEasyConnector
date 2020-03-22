@@ -318,17 +318,10 @@ sub Map {
                 foreach my $linkRelation (keys %{$LinkList->{$type}->{$linkType}}) {
                     foreach my $linkId (keys %{$LinkList->{$type}->{$linkType}->{$linkRelation}}) {
                         if($type eq 'Ticket'){
-                            if($TicketGet && $DynamicFields){
+                            if($TicketGet){
                                 my %Ticket = $Kernel::OM->Get('Kernel::System::Ticket')->TicketGet(
                                     TicketID => $linkId,
-                                    DynamicFields => 1
-                                );
-                                push @{ $LinksReturned->{$type}->{$linkType}->{$linkRelation} }, \%Ticket;
-                            }
-                            elsif($TicketGet && !$DynamicFields){
-                                my %Ticket = $Kernel::OM->Get('Kernel::System::Ticket')->TicketGet(
-                                    TicketID => $linkId,
-                                    DynamicFields => 0
+                                    DynamicFields => $DynamicFields
                                 );
                                 push @{ $LinksReturned->{$type}->{$linkType}->{$linkRelation} }, \%Ticket;
                             } else {
