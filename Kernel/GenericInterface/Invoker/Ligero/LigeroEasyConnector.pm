@@ -2,16 +2,15 @@ package Kernel::GenericInterface::Invoker::Ligero::LigeroEasyConnector;
 
 use strict;
 use warnings;
-
 use Data::Dumper;
-
 use utf8;
 use Encode qw( encode_utf8 );
-
 use MIME::Base64 qw(encode_base64 decode_base64);
-
 use Kernel::System::VariableCheck qw(IsString IsStringWithData IsHashRefWithData IsArrayRefWithData);
 
+use parent qw(
+    Kernel::GenericInterface::LigeroEasyConnectorCommon
+);
 # prevent 'Used once' warning for Kernel::OM
 use Kernel::System::ObjectManager;
 
@@ -123,13 +122,19 @@ sub PrepareRequest {
         $ReturnData{SystemTime} = $Kernel::OM->Get('Kernel::System::Time')->SystemTime();
     }
 
-	my %Ticket;
+    my %Ticket;
     my %Article;
     my @Ats; # For attachments
     my %Service;
     my %SLA;
     my %CustomerCompany;
     my %CustomerUser;
+
+    ### Check if we have InvokerData to replace in the $Param{Data} structure
+    if (IsHashRefWithData($Param{Data}->{InvokerData})) {
+        $Param{Data}                = $Param{Data}->{InvokerData}->{Data};
+        $ReturnData{InvokerData}    = $Param{Data};
+    }
 
 	### Get Ticket Data
     if(IsStringWithData( $Param{Data}->{TicketID} )){
@@ -172,19 +177,17 @@ sub PrepareRequest {
 	}
 
 	#### Get Service if Any
-	#if($Ticket{ServiceID}){
-		#%Service = $Kernel::OM->Get('Kernel::System::Service')->ServiceGet(
-			#ServiceID => $Ticket{ServiceID},
-			#UserID    => 1,
-		#);
-		#delete $Service{ServiceID};
-		#delete $Service{ParentID};
-		#delete $Service{ValidID};
-		#delete $Service{CreateTime};
-		#delete $Service{CreateBy};
-		#delete $Service{ChangeTime};
-		#delete $Service{ChangeBy};
-	#}
+	if($Ticket{ServiceID}){
+		%Service = $Kernel::OM->Get('Kernel::System::Service')->ServicePreferencesGet(
+			ServiceID => $Ticket{ServiceID},
+			UserID    => 1,
+		);
+		my %ServiceData = $Kernel::OM->Get('Kernel::System::Service')->ServiceGet(
+			ServiceID => $Ticket{ServiceID},
+			UserID    => 1,
+		);
+		%Service = (%Service, %ServiceData);
+	}
 	
 	#### Get SLA if Any
 	#if ($Ticket{SLAID}){
@@ -233,10 +236,10 @@ sub PrepareRequest {
     # Verificar se este ticket é integrado (se ele possui o campo dinamico )
     $ReturnData{Ticket} 			= \%Ticket if %Ticket;
     $ReturnData{Article} 			= \%Article if %Article;
-    $ReturnData{Attachment} 		= \@Ats if @Ats;
-    $ReturnData{CustomerCompany} 	= \%CustomerCompany if %CustomerCompany;
-    $ReturnData{CustomerUser} 		= \%CustomerUser if %CustomerUser;
-    #$ReturnData{Service} 			= \%Service if %Service;
+    $ReturnData{Attachment} 			= \@Ats if @Ats;
+    $ReturnData{CustomerCompany} 		= \%CustomerCompany if %CustomerCompany;
+    $ReturnData{CustomerUser} 			= \%CustomerUser if %CustomerUser;
+    $ReturnData{Service} 			= \%Service if %Service;
     #$ReturnData{SLA} 				= \%SLA if %SLA;
 
     if($Param{Data}->{PreResult} && $Param{Data}->{PreResult}->{Data}){
@@ -385,6 +388,7 @@ sub HandleResponse {
         }
     }
 
+
     # prepare Return
     my %ReturnData;
 
@@ -403,6 +407,10 @@ sub HandleResponse {
                 UserType         => 'agent',
         );
     }
+
+    # $Self->_LigeroEasyConnectorCall(
+    #     Data => $Param{Data}
+    # );
 
     # Call Post Invoker
     my $WebserviceData = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
@@ -812,50 +820,6 @@ sub _TicketUpdate {
         }
     }
 
-    # # update Ticket->CustomerUser && Ticket->CustomerID
-    # if ( $Ticket->{CustomerUser} || $Ticket->{CustomerID} ) {
-
-    #     # set values to empty if they are not defined
-    #     $TicketData{CustomerUserID} = $TicketData{CustomerUserID} || '';
-    #     $TicketData{CustomerID}     = $TicketData{CustomerID}     || '';
-    #     $Ticket->{CustomerUser}     = $Ticket->{CustomerUser}     || '';
-    #     $Ticket->{CustomerID}       = $Ticket->{CustomerID}       || '';
-
-    #     my $Success;
-    #     if (
-    #         $Ticket->{CustomerUser} ne $TicketData{CustomerUserID}
-    #         || $Ticket->{CustomerID} ne $TicketData{CustomerID}
-    #         )
-    #     {
-    #         my $CustomerID = $CustomerUserData{UserCustomerID} || '';
-
-    #         # use user defined CustomerID if defined
-    #         if ( defined $Ticket->{CustomerID} && $Ticket->{CustomerID} ne '' ) {
-    #             $CustomerID = $Ticket->{CustomerID};
-    #         }
-
-    #         $Success = $TicketObject->TicketCustomerSet(
-    #             No       => $CustomerID,
-    #             User     => $Ticket->{CustomerUser},
-    #             TicketID => $TicketID,
-    #             UserID   => $Param{UserID},
-    #         );
-    #     }
-    #     else {
-
-    #         # data is the same as in ticket nothing to do
-    #         $Success = 1;
-    #     }
-
-    #     if ( !$Success ) {
-    #         return {
-    #             Success => 0,
-    #             Errormessage =>
-    #                 'Ticket customer user could not be updated, please contact system administrator!',
-    #             }
-    #     }
-    # }
-
     # update Ticket->Priority
     if ( $Ticket->{Priority} || $Ticket->{PriorityID} ) {
         my $Success;
@@ -965,88 +929,6 @@ sub _TicketUpdate {
                 }
         }
     }
-    
-    # @TODO - ADAPT TO OTRS 6 ARTICLE CREATION
-    # my $ArticleID;
-    # if ( IsHashRefWithData($Article) ) {
-
-    #     # set Article From
-    #     my $From;
-    #     if ( $Article->{From} ) {
-    #         $From = $Article->{From};
-    #     }
-    #     elsif ( $Param{UserType} eq 'Customer' ) {
-
-    #         # use data from customer user (if customer user is in database)
-    #         if ( IsHashRefWithData( \%CustomerUserData ) ) {
-    #             $From = '"'
-    #                 . $CustomerUserData{UserFirstname} . ' '
-    #                 . $CustomerUserData{UserLastname} . '"'
-    #                 . ' <' . $CustomerUserData{UserEmail} . '>';
-    #         }
-
-    #         # otherwise use customer user as sent from the request (it should be an email)
-    #         else {
-    #             $From = $Ticket->{CustomerUser};
-    #         }
-    #     }
-    #     else {
-    #         my %UserData = $Kernel::OM->Get('Kernel::System::User')->GetUserData(
-    #             UserID => $Param{UserID},
-    #         );
-    #         $From = $UserData{UserFirstname} . ' ' . $UserData{UserLastname};
-    #     }
-
-    #     # set Article To
-    #     my $To = '';
-
-    #     # create article
-    #     $ArticleID = $TicketObject->ArticleCreate(
-    #         NoAgentNotify  => $Article->{NoAgentNotify}  || 0,
-    #         TicketID       => $TicketID,
-    #         ArticleTypeID  => $Article->{ArticleTypeID}  || '',
-    #         ArticleType    => $Article->{ArticleType}    || '',
-    #         SenderTypeID   => $Article->{SenderTypeID}   || '',
-    #         SenderType     => $Article->{SenderType}     || '',
-    #         From           => $From,
-    #         To             => $To,
-    #         Subject        => $Article->{Subject},
-    #         Body           => $Article->{Body},
-    #         MimeType       => $Article->{MimeType}       || '',
-    #         Charset        => $Article->{Charset}        || '',
-    #         ContentType    => $Article->{ContentType}    || '',
-    #         UserID         => $Param{UserID},
-    #         HistoryType    => $Article->{HistoryType},
-    #         HistoryComment => $Article->{HistoryComment} || '%%',
-    #         AutoResponseType => $Article->{AutoResponseType},
-    #         UnlockOnAway     => $UnlockOnAway,
-    #         OrigHeader       => {
-    #             From    => $From,
-    #             To      => $To,
-    #             Subject => $Article->{Subject},
-    #             Body    => $Article->{Body},
-
-    #         },
-    #     );
-
-    #     if ( !$ArticleID ) {
-    #         return {
-    #             Success => 0,
-    #             ErrorMessage =>
-    #                 'Article could not be created, please contact the system administrator'
-    #             }
-    #     }
-
-    #     # time accounting
-    #     if ( $Article->{TimeUnit} ) {
-    #         $TicketObject->TicketAccountTime(
-    #             TicketID  => $TicketID,
-    #             ArticleID => $ArticleID,
-    #             TimeUnit  => $Article->{TimeUnit},
-    #             UserID    => $Param{UserID},
-    #         );
-    #     }
-    # }
 
     # set dynamic fields
     for my $DynamicField ( @{$DynamicFieldList} ) {
@@ -1070,37 +952,6 @@ sub _TicketUpdate {
         }
     }
 
-    # set attachments
-
-    # for my $Attachment ( @{$AttachmentList} ) {
-    #     my $Result = $Self->CreateAttachment(
-    #         Attachment => $Attachment,
-    #         ArticleID  => $ArticleID || '',
-    #         UserID     => $Param{UserID}
-    #     );
-
-    #     if ( !$Result->{Success} ) {
-    #         my $ErrorMessage =
-    #             $Result->{ErrorMessage} || "Attachment could not be created, please contact the "
-    #             . " system administrator";
-
-    #         return {
-    #             Success      => 0,
-    #             ErrorMessage => $ErrorMessage,
-    #         };
-    #     }
-    # }
-
-    # if ($ArticleID) {
-    #     return {
-    #         Success => 1,
-    #         Data    => {
-    #             TicketID     => $TicketID,
-    #             TicketNumber => $TicketData{TicketNumber},
-    #             ArticleID    => $ArticleID,
-    #         },
-    #     };
-    # }
     return {
         Success => 1,
         Data    => {
