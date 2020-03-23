@@ -13,9 +13,14 @@ use strict;
 use warnings;
 
 use Data::Dumper;
+use MIME::Base64;
 
 use Kernel::System::VariableCheck qw(:all);
 use Storable;
+
+use parent qw(
+    Kernel::GenericInterface::LigeroEasyConnectorCommon
+);
 
 our $ObjectManagerDisabled = 1;
 
@@ -180,7 +185,7 @@ sub Map {
     }
 
     # LigeroSmart get articles and its dynamifields
-    if( $StyleDoc =~/\<\!--\:\:LigeroSmartIncludeAllArticles\:\:--\>/ &&
+    if( $StyleDoc =~/\<\!--\:\:LigeroSmartIncludeAllArticles[\(]*[^\)]*[\)]*\:\:--\>/ &&
         $Param{Data}->{Ticket} &&
         $Param{Data}->{Ticket}->{TicketID}
         )
@@ -194,6 +199,20 @@ sub Map {
         my $Attachments = 1;
         my %ExcludeAttachments;
         my $GetAttachmentContents = 0;
+        my $IgnoreBodyAttachment = 0;
+
+        # Controla a parametrização
+        if ($StyleDoc =~ m/\<\!--\:\:LigeroSmartIncludeAllArticles\(([^\)]+)\)\:\:--\>/) {
+
+            my $functionInput = $1;
+
+            # Incluir conteúdo dos artigos
+            $GetAttachmentContents = 1 if ($functionInput =~ m/\+content/g);
+
+            # Exclui anexo referente ao corpo do artigo
+            $IgnoreBodyAttachment = 1 if ($functionInput =~ m/\-bodyattachment/g);
+
+        }
 
         @Articles = $ArticleObject->ArticleList(
             TicketID => $TicketID,
@@ -233,6 +252,7 @@ sub Map {
                 );
 
                 next ATTACHMENT if !IsHashRefWithData( \%Attachment );
+                next ATTACHMENT if ($IgnoreBodyAttachment && $Attachment{Filename} eq "file-2");
 
                 $Attachment{FileID} = $FileID;
                 if ($GetAttachmentContents)
@@ -254,7 +274,76 @@ sub Map {
         }    # finish article loop
     
         $Param{Data}->{Articles} = \@Articles;
+
+        $Self->{DebuggerObject}->Debug(
+            Summary => "Data with articles added",
+            Data    => $Param{Data},
+        );
+
     }
+
+    # LigeroSmart get articles and its dynamifields
+    if( $StyleDoc =~/\<\!--\:\:LigeroSmartIncludeAllLinks[\(]*[^\)]*[\)]*\:\:--\>/ &&
+        $Param{Data}->{Ticket} &&
+        $Param{Data}->{Ticket}->{TicketID}
+        )
+    {
+        my $functionInput;
+        if ($StyleDoc =~ m/\<\!--\:\:LigeroSmartIncludeAllLinks\(([^\)]+)\)\:\:--\>/) {
+            $functionInput = $1;
+        }
+        
+        my $TicketID = $Param{Data}->{Ticket}->{TicketID};
+        my $LinkObject = $Kernel::OM->Get('Kernel::System::LinkObject');
+
+        my $TicketGet = 0;
+        my $DynamicFields = 0;
+
+        # Incluir Dados do Ticket
+        $TicketGet = 1 if ($functionInput =~ m/\+TicketGet/g);
+
+        # Incluir Campos Dinamicos
+        $DynamicFields = 1 if ($functionInput =~ m/\+DynamicFields/g);
+
+        my $LinkList = $LinkObject->LinkList(
+            Object => 'Ticket',
+            Key    => $TicketID,
+            State  => 'Valid',
+            UserID => 1
+        );
+
+        my $LinksReturned;
+        foreach my $type (keys %{ $LinkList }) {
+            foreach my $linkType (keys %{$LinkList->{$type}}) {
+                foreach my $linkRelation (keys %{$LinkList->{$type}->{$linkType}}) {
+                    foreach my $linkId (keys %{$LinkList->{$type}->{$linkType}->{$linkRelation}}) {
+                        if($type eq 'Ticket'){
+                            if($TicketGet){
+                                my %Ticket = $Kernel::OM->Get('Kernel::System::Ticket')->TicketGet(
+                                    TicketID => $linkId,
+                                    DynamicFields => $DynamicFields
+                                );
+                                push @{ $LinksReturned->{$type}->{$linkType}->{$linkRelation} }, \%Ticket;
+                            } else {
+                                push @{ $LinksReturned->{$type}->{$linkType}->{$linkRelation} }, $linkId;
+                            }
+                        } else {
+                            # Links other than Ticket, such as FAQ and CIs
+                            push @{ $LinksReturned->{$type}->{$linkType}->{$linkRelation} }, $linkId;
+                        }
+                    }
+                }
+            }
+        }
+
+        $Param{Data}->{Links} = $LinksReturned;
+        $Self->{DebuggerObject}->Debug(
+            Summary => "Data with links added",
+            Data    => $LinksReturned,
+        );
+
+    }
+
 
 
     eval {
@@ -417,6 +506,10 @@ sub Map {
             Config => $Config->{PostRegExFilter},
         );
     }
+
+    $Self->_LigeroEasyConnectorCall(
+        Data => $ReturnData
+    );
 
     return {
         Success => 1,

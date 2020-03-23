@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <otrs_package version="1.1">
     <Name>LigeroEasyConnector</Name>
-    <Version>6.0.10</Version>
+    <Version>6.1.1</Version>
     <Vendor>Ligero</Vendor>
     <URL>http://www.complemento.net.br/</URL>
     <License>GNU GENERAL PUBLIC LICENSE Version 2, June 1991</License>
@@ -26,5 +26,6 @@
         <File Location="Kernel/Output/HTML/Templates/Standard/AdminGenericInterfaceInvokerLigero.tt" Permission="644"></File>
         <File Location="Kernel/System/GenericAgent/LigeroEasyConnector.pm" Permission="644"></File>
         <File Location="Kernel/System/GenericAgent/OtrsIntegrationArticleCreate.pm" Permission="644"></File>
+        <File Location="Kernel/GenericInterface/LigeroEasyConnectorCommon.pm" Permission="644"></File>
     </Filelist>
 </otrs_package>
