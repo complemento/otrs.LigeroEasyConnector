@@ -3,7 +3,7 @@
     <Name>LigeroEasyConnector</Name>
     <Version>6.1.2</Version>
     <Vendor>Ligero</Vendor>
-    <URL>http://www.complemento.net.br/</URL>
+    <URL>http://complemento.net.br/</URL>
     <License>GNU GENERAL PUBLIC LICENSE Version 2, June 1991</License>
     <Description Lang="en">Web Service that allows you to integrate your system with another Ligero, OTRS or many other softwares</Description>
     <Framework>6.0.x</Framework>
