@@ -147,6 +147,7 @@ sub PrepareRequest {
         $Ticket{CustomerUser} = $Ticket{CustomerUserID};
 	}	
 
+=cut
 	### Get Article
     if(IsStringWithData( $Param{Data}->{ArticleID} )){
 		%Article = $Kernel::OM->Get('Kernel::System::Ticket')->ArticleGet(
@@ -155,6 +156,7 @@ sub PrepareRequest {
 				Extended => 1,
 				UserID => 1
 			);
+
         $Article{CustomerUser} = $Article{CustomerUserID};
 
         delete $Article{$_} for grep /^((?!DynamicField_)).*ID$/, keys %Article;
@@ -175,6 +177,7 @@ sub PrepareRequest {
 			push @Ats, \%At;
 		}
 	}
+=cut
 
 	#### Get Service if Any
 	if($Ticket{ServiceID}){

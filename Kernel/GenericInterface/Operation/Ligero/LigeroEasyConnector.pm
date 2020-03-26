@@ -14,6 +14,8 @@ use strict;
 use warnings;
 use Data::Dumper;
 use Kernel::System::VariableCheck qw( :all );
+use LWP::UserAgent;
+use MIME::Base64;
 
 use parent qw(
     Kernel::GenericInterface::Operation::Common
@@ -760,6 +762,43 @@ sub Run {
                 }
             }
 
+            # check URL content
+            if ($AttachmentItem->{Content} =~ m/^(http|https|ftp):/ig) {
+
+                # Get WS config and Auth Data
+                my $WS = $Kernel::OM->Get('Kernel::System::GenericInterface::Webservice')->WebserviceGet(
+                    ID => $Self->{WebserviceID},
+                );
+                my $AuthData = $WS->{Config}->{Requester}->{Transport}->{Config}->{Authentication};
+
+                my $ua = LWP::UserAgent->new;
+                $ua->default_header(
+                    'Authorization',
+                    'Basic ' . MIME::Base64::encode(
+                        $AuthData->{BasicAuthUser} . ':' . $AuthData->{BasicAuthPassword},
+                        ''
+                    )
+		);
+                my $url = $AttachmentItem->{Content};
+                my $resp = $ua->get( $url );
+                if ($resp->is_success) {
+                    $AttachmentItem->{Content}     = MIME::Base64::encode($resp->decoded_content( charset => 'none' ),'');
+                    $AttachmentItem->{ContentType} = $resp->header('content-type');
+                    $AttachmentItem->{ContentType} =~ s/;.*$//g;
+                }
+
+                $Self->{DebuggerObject}->Debug(
+                    Summary => "GET $url",
+                    Data    => Dumper({
+                        URL         => $url,
+                        Status      => $resp->status_line,
+                        Headers     => $resp->headers_as_string,
+                        ContentType => $AttachmentItem->{ContentType},
+                        #Content     => $AttachmentItem->{Content}
+                    })
+                );
+
+            }
             # check Attachment attribute values
             my $AttachmentCheck = $Self->_CheckAttachment(
                 Attachment => $AttachmentItem,

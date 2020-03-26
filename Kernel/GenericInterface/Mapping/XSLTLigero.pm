@@ -200,6 +200,7 @@ sub Map {
         my %ExcludeAttachments;
         my $GetAttachmentContents = 0;
         my $IgnoreBodyAttachment = 0;
+        my $OnlyLast = 0;
 
         # Controla a parametrização
         if ($StyleDoc =~ m/\<\!--\:\:LigeroSmartIncludeAllArticles\(([^\)]+)\)\:\:--\>/) {
@@ -209,6 +210,9 @@ sub Map {
             # Incluir conteúdo dos artigos
             $GetAttachmentContents = 1 if ($functionInput =~ m/\+content/g);
 
+            # Obtem somente o ultimo artigo
+            $OnlyLast = 1 if ($functionInput =~ m/\+onlylast/g);
+
             # Exclui anexo referente ao corpo do artigo
             $IgnoreBodyAttachment = 1 if ($functionInput =~ m/\-bodyattachment/g);
 
@@ -216,6 +220,7 @@ sub Map {
 
         @Articles = $ArticleObject->ArticleList(
             TicketID => $TicketID,
+            OnlyLast => $OnlyLast
             # %ArticleListFilters,
         );
         
