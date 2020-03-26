@@ -715,6 +715,13 @@ sub RequesterPerformRequest {
     my $Body;
     if ( IsHashRefWithData( $Param{Data} ) ) {
 
+        # Override headers if necessary
+        if ($Param{Data}->{OverrideHeaders}) {
+            foreach my $hdrName ( keys %{ $Param{Data}->{OverrideHeaders} } ) {
+                $Headers->{$hdrName} = $Param{Data}->{OverrideHeaders}->{$hdrName};
+            }
+        }
+
         # POST, PUT and PATCH can have Data in the Body.
         if (
             $RestCommand eq 'POST'
@@ -727,9 +734,35 @@ sub RequesterPerformRequest {
                 Data    => $Param{Data},
             );
 
-            $Param{Data} = $JSONObject->Encode(
-                Data => $Param{Data},
-            );
+            if($Param{Data}->{UseChildElementAsRoot}){
+                $Self->{DebuggerObject}->Debug(
+                    Summary => "Using child element as RootElement (UseChildElementAsRoot)",
+                    Data    => $Param{Data}->{UseChildElementAsRoot},
+                );
+                $Param{Data} = $JSONObject->Encode(
+                    Data => $Param{Data}->{$Param{Data}->{UseChildElementAsRoot}},
+                );
+            } elsif($Param{Data}->{UseChildElementAsRootArray}){
+		my @RootArray;
+		push @RootArray, $Param{Data}->{$Param{Data}->{UseChildElementAsRootArray}};
+                $Param{Data} = $JSONObject->Encode(
+                    Data => \@RootArray
+                );
+                $Self->{DebuggerObject}->Debug(
+                    Summary => "Using child element as RootElementArray (UseChildElementAsRootArray)",
+                    Data    => $Param{Data}
+                );
+            } elsif ($Param{Data}->{UseChildElementAsBodyStream}) {
+                $Self->{DebuggerObject}->Debug(
+                    Summary => "Using child element as body stream (UseChildElementAsBodyStream)",
+                    Data    => $Param{Data}->{UseChildElementAsBodyStream},
+                );
+                $Param{Data} = decode_base64( $Param{Data}->{$Param{Data}->{UseChildElementAsBodyStream}} );
+            } else {
+                $Param{Data} = $JSONObject->Encode(
+                    Data => $Param{Data},
+                );
+            }
 
             # Make sure data is correctly encoded.
             $EncodeObject->EncodeOutput( \$Param{Data} );
@@ -770,6 +803,10 @@ sub RequesterPerformRequest {
     }
 
     # Add headers to request
+    $Self->{DebuggerObject}->Debug(
+        Summary => "Request Headers",
+        Data    => $Headers,
+    );
     push @RequestParam, $Headers;
 
     $RestClient->$RestCommand(@RequestParam);
