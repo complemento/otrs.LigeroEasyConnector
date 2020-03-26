@@ -62,7 +62,7 @@
             </Hash>
         </Value>
     </Setting>
-    <Setting Name="GenericInterface::Invoker::Module###Ligero::LigeroEasyConnector" Required="0" Valid="1">a
+    <Setting Name="GenericInterface::Invoker::Module###Ligero::LigeroEasyConnector" Required="0" Valid="1">
         <Description Translatable="1">Send Ticket and Article to other System.</Description>
         <Navigation>GenericInterface::Invoker::ModuleRegistration</Navigation>
         <Value>
