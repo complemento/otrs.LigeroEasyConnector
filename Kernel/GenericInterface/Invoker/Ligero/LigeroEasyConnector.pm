@@ -147,34 +147,34 @@ sub PrepareRequest {
         $Ticket{CustomerUser} = $Ticket{CustomerUserID};
 	}	
 
-	### Get Article
-    if(IsStringWithData( $Param{Data}->{ArticleID} )){
-		%Article = $Kernel::OM->Get('Kernel::System::Ticket')->ArticleGet(
-				ArticleID => $Param{Data}->{ArticleID}, 
-				DynamicFields => 1,
-				Extended => 1,
-				UserID => 1
-			);
-        $Article{CustomerUser} = $Article{CustomerUserID};
+	# ### Get Article
+    # if(IsStringWithData( $Param{Data}->{ArticleID} )){
+	# 	%Article = $Kernel::OM->Get('Kernel::System::Ticket')->ArticleGet(
+	# 			ArticleID => $Param{Data}->{ArticleID}, 
+	# 			DynamicFields => 1,
+	# 			Extended => 1,
+	# 			UserID => 1
+	# 		);
+    #     $Article{CustomerUser} = $Article{CustomerUserID};
 
-        delete $Article{$_} for grep /^((?!DynamicField_)).*ID$/, keys %Article;
+    #     delete $Article{$_} for grep /^((?!DynamicField_)).*ID$/, keys %Article;
 
-		my %Attachments = $Kernel::OM->Get('Kernel::System::Ticket')->ArticleAttachmentIndex(ArticleID => $Param{Data}->{ArticleID}, UserID => 1);
+	# 	my %Attachments = $Kernel::OM->Get('Kernel::System::Ticket')->ArticleAttachmentIndex(ArticleID => $Param{Data}->{ArticleID}, UserID => 1);
 		
-		for (keys %Attachments){
-			my %Attachment = $Kernel::OM->Get('Kernel::System::Ticket')->ArticleAttachment(
-				ArticleID => $Param{Data}->{ArticleID},
-				FileID    => $_,   # as returned by ArticleAttachmentIndex
-				UserID    => 1,
-			);
-			my %At;
-			$At{Content} = encode_base64($Attachment{Content});
-			$At{ContentType} = $Attachments{$_}->{ContentType};
-			$At{Filename} = $Attachments{$_}->{Filename};
+	# 	for (keys %Attachments){
+	# 		my %Attachment = $Kernel::OM->Get('Kernel::System::Ticket')->ArticleAttachment(
+	# 			ArticleID => $Param{Data}->{ArticleID},
+	# 			FileID    => $_,   # as returned by ArticleAttachmentIndex
+	# 			UserID    => 1,
+	# 		);
+	# 		my %At;
+	# 		$At{Content} = encode_base64($Attachment{Content});
+	# 		$At{ContentType} = $Attachments{$_}->{ContentType};
+	# 		$At{Filename} = $Attachments{$_}->{Filename};
 			
-			push @Ats, \%At;
-		}
-	}
+	# 		push @Ats, \%At;
+	# 	}
+	# }
 
 	#### Get Service if Any
 	if($Ticket{ServiceID}){
