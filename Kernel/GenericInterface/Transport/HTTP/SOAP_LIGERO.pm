@@ -696,7 +696,13 @@ sub RequesterPerformRequest {
 
         my $Asset = Mojo::Asset::File->new(path => $FileUploadPath);
 
-        my $post = $ua->post("http://172.26.22.148:8080/axis/services/USD_R11_WebService" 
+        #use Data::Dumper;
+        #$Kernel::OM->Get('Kernel::System::Log')->Log(
+        #    Priority => 'error',
+        #    Message  => "CONFIG ".Dumper($Config->{Endpoint})
+        #);
+
+        my $post = $ua->post($Config->{Endpoint}
         => {'SOAPAction' => '','Content-Type'=>'multipart/related'} 
         => multipart => [
                 {content => $SOAP_request},
